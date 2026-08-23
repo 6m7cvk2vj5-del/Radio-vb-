@@ -93,12 +93,11 @@
   }
 
   .now-playing{
-    padding: 14px 0 22px;
-    min-height: 74px;
+    padding: 14px 0 18px;
   }
   .now-playing h1{
     margin: 0 0 6px;
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 700;
     letter-spacing: -0.01em;
     line-height: 1.1;
@@ -110,6 +109,69 @@
     color: var(--text-dim);
     letter-spacing: 0.02em;
   }
+
+  .trackCard{
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 10px;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+  }
+  .artwork{
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    background: var(--panel-2);
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+  }
+  .artwork svg{ width: 22px; height: 22px; }
+  .artwork img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .trackText{
+    min-width: 0;
+    flex: 1;
+  }
+  .trackTitle{
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 0 2px !important;
+  }
+  .trackArtist{
+    font-size: 12px !important;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 0 6px !important;
+  }
+  .spotifyLink{
+    display: none;
+    align-items: center;
+    gap: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: var(--amber);
+    text-decoration: none;
+  }
+  .spotifyLink svg{ width: 12px; height: 12px; }
 
   .tabsWrap{
     overflow-x: auto;
@@ -290,6 +352,21 @@
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
         <p id="stationSub">Six networks, 32 channels total</p>
+
+        <div class="trackCard" id="trackCard">
+          <div class="artwork" id="artwork">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+            <img id="artworkImg" alt="">
+          </div>
+          <div class="trackText">
+            <p class="trackTitle" id="trackTitle"></p>
+            <p class="trackArtist" id="trackArtist"></p>
+            <a class="spotifyLink" id="spotifyLink" href="#" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.4.1-.7-.1-.8-.5-.1-.4.1-.7.5-.8 4-.9 7.5-.5 10.3 1.2.3.2.4.6.2.9zm1.2-2.7c-.2.3-.7.5-1 .3-2.9-1.8-7.3-2.3-10.7-1.3-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.9-1.2 8.7-.6 12 1.5.4.2.5.7.2 1zm.1-2.8C14.3 8.8 8.9 8.6 5.7 9.6c-.5.1-1-.2-1.1-.6-.1-.5.2-1 .6-1.1 3.7-1.1 9.7-.9 13.5 1.4.4.3.6.9.3 1.3-.3.4-.9.5-1.3.3z"></path></svg>
+              Search on Spotify
+            </a>
+          </div>
+        </div>
       </div>
 
       <div class="tabsWrap">
@@ -324,28 +401,29 @@
     { id: 'nts',  label: 'NTS',            place: 'London' },
   ];
 
+  // `now` describes how to fetch now-playing metadata for a channel. Omitted = no metadata attempted.
   const stations = [
-    // FIP — full family of webradios
-    { network:'fip', name:'FIP',                 genre:'Eclectic mix',       url:'https://icecast.radiofrance.fr/fip-midfi.mp3?id=radiofrance' },
+    // FIP — pull IDs confirmed for 9 of 12 webradios; Pop/Hip-Hop/Sacré Français have no documented ID
+    { network:'fip', name:'FIP',                 genre:'Eclectic mix',       url:'https://icecast.radiofrance.fr/fip-midfi.mp3?id=radiofrance', now:{type:'fip', id:7} },
     { network:'fip', name:'FIP Pop',              genre:'Pop',                url:'https://icecast.radiofrance.fr/fippop-midfi.mp3?id=radiofrance' },
-    { network:'fip', name:'FIP Rock',             genre:'Rock',               url:'https://icecast.radiofrance.fr/fiprock-midfi.mp3?id=radiofrance' },
-    { network:'fip', name:'FIP Jazz',             genre:'Jazz',               url:'https://icecast.radiofrance.fr/fipjazz-midfi.mp3?id=radiofrance' },
-    { network:'fip', name:'FIP Groove',           genre:'Groove · funk · soul', url:'https://icecast.radiofrance.fr/fipgroove-midfi.mp3?id=radiofrance' },
-    { network:'fip', name:'FIP Reggae',           genre:'Reggae',             url:'https://icecast.radiofrance.fr/fipreggae-midfi.mp3?id=radiofrance' },
-    { network:'fip', name:'FIP Electro',          genre:'Electro',            url:'https://icecast.radiofrance.fr/fipelectro-midfi.mp3?id=radiofrance' },
-    { network:'fip', name:'FIP Metal',            genre:'Metal',              url:'https://icecast.radiofrance.fr/fipmetal-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Rock',             genre:'Rock',               url:'https://icecast.radiofrance.fr/fiprock-midfi.mp3?id=radiofrance', now:{type:'fip', id:64} },
+    { network:'fip', name:'FIP Jazz',             genre:'Jazz',               url:'https://icecast.radiofrance.fr/fipjazz-midfi.mp3?id=radiofrance', now:{type:'fip', id:65} },
+    { network:'fip', name:'FIP Groove',           genre:'Groove · funk · soul', url:'https://icecast.radiofrance.fr/fipgroove-midfi.mp3?id=radiofrance', now:{type:'fip', id:66} },
+    { network:'fip', name:'FIP Reggae',           genre:'Reggae',             url:'https://icecast.radiofrance.fr/fipreggae-midfi.mp3?id=radiofrance', now:{type:'fip', id:71} },
+    { network:'fip', name:'FIP Electro',          genre:'Electro',            url:'https://icecast.radiofrance.fr/fipelectro-midfi.mp3?id=radiofrance', now:{type:'fip', id:74} },
+    { network:'fip', name:'FIP Metal',            genre:'Metal',              url:'https://icecast.radiofrance.fr/fipmetal-midfi.mp3?id=radiofrance', now:{type:'fip', id:77} },
     { network:'fip', name:'FIP Hip-Hop',          genre:'Hip-hop',            url:'https://icecast.radiofrance.fr/fiphiphop-midfi.mp3?id=radiofrance' },
-    { network:'fip', name:'FIP Monde',            genre:'World',              url:'https://icecast.radiofrance.fr/fipworld-midfi.mp3?id=radiofrance' },
-    { network:'fip', name:'FIP Nouveautés',       genre:'New releases',       url:'https://icecast.radiofrance.fr/fipnouveautes-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Monde',            genre:'World',              url:'https://icecast.radiofrance.fr/fipworld-midfi.mp3?id=radiofrance', now:{type:'fip', id:69} },
+    { network:'fip', name:'FIP Nouveautés',       genre:'New releases',       url:'https://icecast.radiofrance.fr/fipnouveautes-midfi.mp3?id=radiofrance', now:{type:'fip', id:70} },
     { network:'fip', name:'FIP Sacré Français',   genre:'French chanson',     url:'https://icecast.radiofrance.fr/fipsacrefrancais-midfi.mp3?id=radiofrance' },
 
-    // Radio Paradise — its four mixes
+    // Radio Paradise — its four mixes (no metadata: undocumented per-mix channel param + historic CORS issues)
     { network:'rp', name:'Main Mix',   genre:'Rock · eclectic',  url:'https://stream.radioparadise.com/mp3-192' },
     { network:'rp', name:'Mellow Mix', genre:'Chill · acoustic', url:'https://stream.radioparadise.com/mellow-192' },
     { network:'rp', name:'Rock Mix',   genre:'Rock-focused',     url:'https://stream.radioparadise.com/rock-192' },
     { network:'rp', name:'Global Mix', genre:'World · eclectic', url:'https://stream.radioparadise.com/world-etc-192' },
 
-    // SomaFM — a spread of its channels
+    // SomaFM — no metadata: their third-party API was officially discontinued
     { network:'soma', name:'Groove Salad',     genre:'Ambient · downtempo', url:'https://ice1.somafm.com/groovesalad-128-mp3' },
     { network:'soma', name:'Secret Agent',     genre:'Lounge · spy jazz',   url:'https://ice1.somafm.com/secretagent-128-mp3' },
     { network:'soma', name:'Drone Zone',       genre:'Deep ambient',       url:'https://ice1.somafm.com/dronezone-128-mp3' },
@@ -355,15 +433,15 @@
     { network:'soma', name:'Lush',             genre:'Mellow vocals',      url:'https://ice1.somafm.com/lush-128-mp3' },
     { network:'soma', name:'Space Station',    genre:'Space music',        url:'https://ice1.somafm.com/spacestation-128-mp3' },
 
-    // KEXP — single broadcast
-    { network:'kexp', name:'KEXP', genre:'Indie · alternative', url:'https://kexp.streamguys1.com/kexp160.aac' },
+    // KEXP — well-documented public API
+    { network:'kexp', name:'KEXP', genre:'Indie · alternative', url:'https://kexp.streamguys1.com/kexp160.aac', now:{type:'kexp'} },
 
-    // KCRW — its music-only channel
+    // KCRW — no metadata: tracklist endpoint/channel slug for Eclectic24 unconfirmed
     { network:'kcrw', name:'Eclectic24', genre:'Eclectic DJ mix', url:'https://kcrw.streamguys1.com/kcrw_128k_aac_e24' },
 
-    // NTS — two live channels plus a few Infinite Mixtapes
-    { network:'nts', name:'NTS 1',          genre:'Underground · global',   url:'https://stream-relay-geo.ntslive.net/stream' },
-    { network:'nts', name:'NTS 2',          genre:'Leftfield · experimental', url:'https://stream-relay-geo.ntslive.net/stream2' },
+    // NTS — live channels show DJ/show name + artwork; Infinite Mixtapes have no confirmed metadata endpoint
+    { network:'nts', name:'NTS 1',          genre:'Underground · global',   url:'https://stream-relay-geo.ntslive.net/stream', now:{type:'nts', channel:'1'} },
+    { network:'nts', name:'NTS 2',          genre:'Leftfield · experimental', url:'https://stream-relay-geo.ntslive.net/stream2', now:{type:'nts', channel:'2'} },
     { network:'nts', name:'Poolside',       genre:'Balearic · disco',       url:'https://stream-mixtape-geo.ntslive.net/mixtape4' },
     { network:'nts', name:'Slow Focus',     genre:'Ambient · drone',        url:'https://stream-mixtape-geo.ntslive.net/mixtape' },
     { network:'nts', name:'Memory Lane',    genre:'Psych folk · garage',    url:'https://stream-mixtape-geo.ntslive.net/mixtape6' },
@@ -378,6 +456,8 @@
 
   let currentIndex = null;
   let activeNetwork = networks[0].id;
+  let npTimer = null;
+  let npRequestId = 0;
 
   const audio = document.getElementById('audio');
   const playBtn = document.getElementById('playBtn');
@@ -391,6 +471,11 @@
   const tabUnderline = document.getElementById('tabUnderline');
   const presetList = document.getElementById('presetList');
   const liveIndicator = document.getElementById('liveIndicator');
+  const trackCard = document.getElementById('trackCard');
+  const trackTitleEl = document.getElementById('trackTitle');
+  const trackArtistEl = document.getElementById('trackArtist');
+  const artworkImg = document.getElementById('artworkImg');
+  const spotifyLink = document.getElementById('spotifyLink');
 
   function pad(n){ return String(n).padStart(2, '0'); }
   function networkLabel(id){ return networks.find(n => n.id === id).label; }
@@ -454,6 +539,7 @@
     stationName.textContent = s.name;
     stationSub.textContent = networkLabel(s.network) + ' · ' + s.genre;
     playBtn.disabled = false;
+    hideTrackCard();
     if(activeNetwork !== s.network){ selectNetwork(s.network); }
     else { renderPresetList(); updateSkipButtons(); }
     playCurrent();
@@ -500,16 +586,117 @@
     playBtn.classList.toggle('playing', isPlaying);
   }
 
+  // ---------- Now playing metadata ----------
+
+  function hideTrackCard(){
+    trackCard.style.display = 'none';
+    artworkImg.style.display = 'none';
+    spotifyLink.style.display = 'none';
+  }
+
+  function showTrackCard(title, artist, coverUrl, spotifyQuery){
+    trackTitleEl.textContent = title;
+    trackArtistEl.textContent = artist || '';
+    trackArtistEl.style.display = artist ? 'block' : 'none';
+    if(coverUrl){
+      artworkImg.onerror = () => { artworkImg.style.display = 'none'; };
+      artworkImg.onload = () => { artworkImg.style.display = 'block'; };
+      artworkImg.src = coverUrl;
+    } else {
+      artworkImg.style.display = 'none';
+    }
+    if(spotifyQuery){
+      spotifyLink.href = 'https://open.spotify.com/search/' + encodeURIComponent(spotifyQuery);
+      spotifyLink.style.display = 'inline-flex';
+    } else {
+      spotifyLink.style.display = 'none';
+    }
+    trackCard.style.display = 'flex';
+  }
+
+  async function fetchFipNow(id){
+    const res = await fetch('https://api.radiofrance.fr/livemeta/pull/' + id);
+    if(!res.ok) return null;
+    const data = await res.json();
+    const stepsObj = data.steps || {};
+    const list = Object.values(stepsObj);
+    if(!list.length) return null;
+    const now = Math.floor(Date.now() / 1000);
+    let entry = list.find(s => s && typeof s.start === 'number' && typeof s.end === 'number' && now >= s.start && now < s.end);
+    if(!entry) entry = list[list.length - 2] || list[list.length - 1];
+    if(!entry) return null;
+    const title = entry.title || entry.song || entry.track;
+    const artist = entry.authors || entry.artist || entry.performers;
+    const cover = entry.visual || entry.cover || entry.image;
+    if(!title || !artist) return null;
+    return { title: title, artist: artist, cover: cover, spotifyQuery: artist + ' ' + title };
+  }
+
+  async function fetchKexpNow(){
+    const res = await fetch('https://api.kexp.org/v2/plays/');
+    if(!res.ok) return null;
+    const data = await res.json();
+    const entry = data.results && data.results[0];
+    if(!entry || !entry.song || !entry.artist) return null;
+    return { title: entry.song, artist: entry.artist, cover: entry.thumbnail_uri, spotifyQuery: entry.artist + ' ' + entry.song };
+  }
+
+  async function fetchNtsNow(channel){
+    const res = await fetch('https://www.nts.live/api/v2/live');
+    if(!res.ok) return null;
+    const data = await res.json();
+    const entry = (data.results || []).find(r => r.channel_name === channel);
+    const now = entry && entry.now;
+    if(!now || !now.broadcast_title) return null;
+    const media = now.embeds && now.embeds.details && now.embeds.details.media;
+    const cover = media && (media.picture_medium || media.picture_large);
+    return { title: now.broadcast_title, artist: null, cover: cover, spotifyQuery: null };
+  }
+
+  async function fetchNowPlaying(station){
+    if(!station.now) return null;
+    try{
+      if(station.now.type === 'fip') return await fetchFipNow(station.now.id);
+      if(station.now.type === 'kexp') return await fetchKexpNow();
+      if(station.now.type === 'nts') return await fetchNtsNow(station.now.channel);
+    } catch(e){ return null; }
+    return null;
+  }
+
+  function stopNowPlayingPolling(){
+    if(npTimer){ clearInterval(npTimer); npTimer = null; }
+  }
+
+  function startNowPlayingPolling(){
+    stopNowPlayingPolling();
+    const s = stations[currentIndex];
+    if(!s || !s.now){ return; }
+    const myRequestId = ++npRequestId;
+    const poll = async () => {
+      const info = await fetchNowPlaying(s);
+      if(myRequestId !== npRequestId) return; // station changed while awaiting
+      if(!info || !info.title){ hideTrackCard(); return; }
+      showTrackCard(info.title, info.artist, info.cover, info.spotifyQuery);
+    };
+    poll();
+    npTimer = setInterval(poll, 20000);
+  }
+
+  // ---------- Audio wiring ----------
+
   audio.addEventListener('playing', () => {
     statusEl.textContent = '';
     updatePlayIcon(true);
     liveIndicator.classList.add('on');
-    if('mediaSession' in navigator && currentIndex !== null){
+    if(currentIndex !== null){
       const s = stations[currentIndex];
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: s.name, artist: networkLabel(s.network), album: s.genre
-      });
-      navigator.mediaSession.playbackState = 'playing';
+      if('mediaSession' in navigator){
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: s.name, artist: networkLabel(s.network), album: s.genre
+        });
+        navigator.mediaSession.playbackState = 'playing';
+      }
+      startNowPlayingPolling();
     }
   });
 
@@ -519,12 +706,15 @@
     statusEl.textContent = "Couldn't connect — try another preset";
     updatePlayIcon(false);
     liveIndicator.classList.remove('on');
+    stopNowPlayingPolling();
+    hideTrackCard();
   });
 
   audio.addEventListener('pause', () => {
     updatePlayIcon(false);
     liveIndicator.classList.remove('on');
     if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    stopNowPlayingPolling();
   });
 
   playBtn.addEventListener('click', () => {
