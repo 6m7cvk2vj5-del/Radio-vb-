@@ -88,17 +88,17 @@
   }
 
   main{
-    padding: 8px 22px 20px;
+    padding: 8px 22px 16px;
     border-bottom: 1px solid var(--hairline);
   }
 
   .now-playing{
-    padding: 14px 0 26px;
+    padding: 14px 0 22px;
     min-height: 74px;
   }
   .now-playing h1{
     margin: 0 0 6px;
-    font-size: 30px;
+    font-size: 28px;
     font-weight: 700;
     letter-spacing: -0.01em;
     line-height: 1.1;
@@ -111,67 +111,47 @@
     letter-spacing: 0.02em;
   }
 
-  .tuner{ padding: 4px 0 30px; }
-  .track{
-    position: relative;
-    height: 40px;
+  .tabsWrap{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 -22px 24px;
+    padding: 0 22px;
   }
-  .track::before{
-    content: '';
-    position: absolute;
-    left: 0; right: 0; top: 16px;
-    height: 2px;
-    background: var(--hairline);
-  }
-  .ticks{
+  .tabsWrap::-webkit-scrollbar{ display: none; }
+
+  .tabs{
     position: relative;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    height: 100%;
+    gap: 24px;
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 12px;
+    white-space: nowrap;
   }
-  .tick{
+
+  .tab{
     appearance: none;
     background: none;
     border: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 2px 0;
-    cursor: pointer;
-  }
-  .tick .dot{
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--text-faint);
-    transition: background .25s ease, transform .25s ease;
-  }
-  .tick .num{
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
     color: var(--text-faint);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 0;
+    cursor: pointer;
     transition: color .25s ease;
+    flex-shrink: 0;
   }
-  .tick.active .dot{
-    background: var(--amber);
-    transform: scale(1.3);
-  }
-  .tick.active .num{ color: var(--amber); }
+  .tab.active{ color: var(--amber); }
 
-  .needle{
+  .tabUnderline{
     position: absolute;
-    top: -6px;
-    left: 0%;
-    width: 3px;
-    height: 28px;
+    bottom: -1px;
+    height: 2px;
     background: var(--amber);
-    border-radius: 2px;
-    box-shadow: 0 0 10px 1px var(--amber-dim);
-    transform: translateX(-50%);
-    transition: left .45s cubic-bezier(.2,.8,.2,1);
-    pointer-events: none;
+    box-shadow: 0 0 8px 1px var(--amber-dim);
+    transition: left .35s cubic-bezier(.2,.8,.2,1), width .35s cubic-bezier(.2,.8,.2,1);
   }
 
   .playRow{
@@ -183,8 +163,8 @@
   }
   .playBtn{
     appearance: none;
-    width: 76px;
-    height: 76px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
     background: var(--panel);
     border: 1px solid var(--hairline);
@@ -195,7 +175,7 @@
     cursor: pointer;
     transition: border-color .25s ease, box-shadow .25s ease;
   }
-  .playBtn svg{ width: 26px; height: 26px; }
+  .playBtn svg{ width: 24px; height: 24px; }
   .playBtn:disabled{ opacity: 0.4; }
   .playBtn.playing{
     border-color: var(--amber);
@@ -269,7 +249,7 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    .needle, .live-indicator .dot{ transition: none; animation: none; }
+    .tabUnderline, .live-indicator .dot{ transition: none; animation: none; }
   }
 </style>
 </head>
@@ -283,13 +263,12 @@
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Nine curated, ad-free stations below</p>
+        <p id="stationSub">Six networks, 32 channels total</p>
       </div>
 
-      <div class="tuner">
-        <div class="track">
-          <div class="needle" id="needle"></div>
-          <div class="ticks" id="ticks"></div>
+      <div class="tabsWrap">
+        <div class="tabs" id="tabs">
+          <div class="tabUnderline" id="tabUnderline"></div>
         </div>
       </div>
 
@@ -305,82 +284,136 @@
 <audio id="audio" preload="none"></audio>
 
 <script>
+  const networks = [
+    { id: 'fip',  label: 'FIP',            place: 'Paris' },
+    { id: 'rp',   label: 'Radio Paradise', place: 'California' },
+    { id: 'soma', label: 'SomaFM',         place: 'San Francisco' },
+    { id: 'kexp', label: 'KEXP',           place: 'Seattle' },
+    { id: 'kcrw', label: 'KCRW',           place: 'Santa Monica' },
+    { id: 'nts',  label: 'NTS',            place: 'London' },
+  ];
+
   const stations = [
-    { id: 1, name: "FIP", place: "Paris", genre: "Eclectic mix", url: "https://icecast.radiofrance.fr/fip-midfi.mp3?id=radiofrance" },
-    { id: 2, name: "Radio Paradise", place: "California", genre: "Rock · world · electronic", url: "https://stream-tx3.radioparadise.com/mp3-192" },
-    { id: 3, name: "Groove Salad", place: "SomaFM", genre: "Ambient · downtempo", url: "https://ice1.somafm.com/groovesalad-128-mp3" },
-    { id: 4, name: "Secret Agent", place: "SomaFM", genre: "Lounge · spy jazz", url: "https://ice1.somafm.com/secretagent-128-mp3" },
-    { id: 5, name: "Drone Zone", place: "SomaFM", genre: "Deep ambient", url: "https://ice1.somafm.com/dronezone-128-mp3" },
-    { id: 6, name: "KEXP", place: "Seattle", genre: "Indie · alternative", url: "https://kexp.streamguys1.com/kexp160.aac" },
-    { id: 7, name: "KCRW Eclectic24", place: "Santa Monica", genre: "Eclectic DJ mix", url: "https://kcrw.streamguys1.com/kcrw_128k_aac_e24" },
-    { id: 8, name: "NTS 1", place: "London", genre: "Underground · global", url: "https://stream-relay-geo.ntslive.net/stream" },
-    { id: 9, name: "NTS 2", place: "London", genre: "Leftfield · experimental", url: "https://stream-relay-geo.ntslive.net/stream2" },
+    // FIP — full family of webradios
+    { network:'fip', name:'FIP',                 genre:'Eclectic mix',       url:'https://icecast.radiofrance.fr/fip-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Pop',              genre:'Pop',                url:'https://icecast.radiofrance.fr/fippop-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Rock',             genre:'Rock',               url:'https://icecast.radiofrance.fr/fiprock-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Jazz',             genre:'Jazz',               url:'https://icecast.radiofrance.fr/fipjazz-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Groove',           genre:'Groove · funk · soul', url:'https://icecast.radiofrance.fr/fipgroove-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Reggae',           genre:'Reggae',             url:'https://icecast.radiofrance.fr/fipreggae-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Electro',          genre:'Electro',            url:'https://icecast.radiofrance.fr/fipelectro-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Metal',            genre:'Metal',              url:'https://icecast.radiofrance.fr/fipmetal-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Hip-Hop',          genre:'Hip-hop',            url:'https://icecast.radiofrance.fr/fiphiphop-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Monde',            genre:'World',              url:'https://icecast.radiofrance.fr/fipworld-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Nouveautés',       genre:'New releases',       url:'https://icecast.radiofrance.fr/fipnouveautes-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Sacré Français',   genre:'French chanson',     url:'https://icecast.radiofrance.fr/fipsacrefrancais-midfi.mp3?id=radiofrance' },
+
+    // Radio Paradise — its four mixes
+    { network:'rp', name:'Main Mix',   genre:'Rock · eclectic',  url:'https://stream.radioparadise.com/mp3-192' },
+    { network:'rp', name:'Mellow Mix', genre:'Chill · acoustic', url:'https://stream.radioparadise.com/mellow-192' },
+    { network:'rp', name:'Rock Mix',   genre:'Rock-focused',     url:'https://stream.radioparadise.com/rock-192' },
+    { network:'rp', name:'Global Mix', genre:'World · eclectic', url:'https://stream.radioparadise.com/world-etc-192' },
+
+    // SomaFM — a spread of its channels
+    { network:'soma', name:'Groove Salad',     genre:'Ambient · downtempo', url:'https://ice1.somafm.com/groovesalad-128-mp3' },
+    { network:'soma', name:'Secret Agent',     genre:'Lounge · spy jazz',   url:'https://ice1.somafm.com/secretagent-128-mp3' },
+    { network:'soma', name:'Drone Zone',       genre:'Deep ambient',       url:'https://ice1.somafm.com/dronezone-128-mp3' },
+    { network:'soma', name:'Indie Pop Rocks',  genre:'Indie pop',          url:'https://ice1.somafm.com/indiepop-128-mp3' },
+    { network:'soma', name:'Left Coast 70s',   genre:'70s album rock',     url:'https://ice1.somafm.com/seventies-128-mp3' },
+    { network:'soma', name:'Underground 80s',  genre:'80s synthpop',       url:'https://ice1.somafm.com/u80s-128-mp3' },
+    { network:'soma', name:'Lush',             genre:'Mellow vocals',      url:'https://ice1.somafm.com/lush-128-mp3' },
+    { network:'soma', name:'Space Station',    genre:'Space music',        url:'https://ice1.somafm.com/spacestation-128-mp3' },
+
+    // KEXP — single broadcast
+    { network:'kexp', name:'KEXP', genre:'Indie · alternative', url:'https://kexp.streamguys1.com/kexp160.aac' },
+
+    // KCRW — its music-only channel
+    { network:'kcrw', name:'Eclectic24', genre:'Eclectic DJ mix', url:'https://kcrw.streamguys1.com/kcrw_128k_aac_e24' },
+
+    // NTS — two live channels plus a few Infinite Mixtapes
+    { network:'nts', name:'NTS 1',          genre:'Underground · global',   url:'https://stream-relay-geo.ntslive.net/stream' },
+    { network:'nts', name:'NTS 2',          genre:'Leftfield · experimental', url:'https://stream-relay-geo.ntslive.net/stream2' },
+    { network:'nts', name:'Poolside',       genre:'Balearic · disco',       url:'https://stream-mixtape-geo.ntslive.net/mixtape4' },
+    { network:'nts', name:'Slow Focus',     genre:'Ambient · drone',        url:'https://stream-mixtape-geo.ntslive.net/mixtape' },
+    { network:'nts', name:'Memory Lane',    genre:'Psych folk · garage',    url:'https://stream-mixtape-geo.ntslive.net/mixtape6' },
+    { network:'nts', name:'4 to the Floor', genre:'House · club',           url:'https://stream-mixtape-geo.ntslive.net/mixtape5' },
   ];
 
   const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
   const PAUSE_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
 
   let currentIndex = null;
+  let activeNetwork = networks[0].id;
 
   const audio = document.getElementById('audio');
   const playBtn = document.getElementById('playBtn');
   const stationName = document.getElementById('stationName');
   const stationSub = document.getElementById('stationSub');
   const statusEl = document.getElementById('status');
-  const needle = document.getElementById('needle');
+  const tabsEl = document.getElementById('tabs');
+  const tabUnderline = document.getElementById('tabUnderline');
   const presetList = document.getElementById('presetList');
-  const ticksEl = document.getElementById('ticks');
   const liveIndicator = document.getElementById('liveIndicator');
 
   function pad(n){ return String(n).padStart(2, '0'); }
+  function networkLabel(id){ return networks.find(n => n.id === id).label; }
 
-  function buildUI(){
-    stations.forEach((s, i) => {
-      const tick = document.createElement('button');
-      tick.className = 'tick';
-      tick.setAttribute('aria-label', s.name);
-      tick.innerHTML = '<span class="dot"></span><span class="num">' + pad(s.id) + '</span>';
-      tick.addEventListener('click', () => selectStation(i));
-      ticksEl.appendChild(tick);
+  function buildTabs(){
+    networks.forEach(net => {
+      const tab = document.createElement('button');
+      tab.className = 'tab';
+      tab.textContent = net.label;
+      tab.dataset.id = net.id;
+      tab.addEventListener('click', () => selectNetwork(net.id));
+      tabsEl.appendChild(tab);
+    });
+  }
 
+  function selectNetwork(id){
+    activeNetwork = id;
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.id === id);
+    });
+    positionUnderline();
+    renderPresetList();
+  }
+
+  function positionUnderline(){
+    const activeTab = document.querySelector('.tab.active');
+    if(!activeTab) return;
+    tabUnderline.style.left = activeTab.offsetLeft + 'px';
+    tabUnderline.style.width = activeTab.offsetWidth + 'px';
+  }
+
+  function renderPresetList(){
+    presetList.innerHTML = '';
+    const filtered = stations.filter(s => s.network === activeNetwork);
+    filtered.forEach((s, i) => {
+      const globalIndex = stations.indexOf(s);
       const li = document.createElement('li');
       li.className = 'presetRow';
+      if(globalIndex === currentIndex) li.classList.add('active');
       li.innerHTML =
-        '<span class="presetNum">' + pad(s.id) + '</span>' +
+        '<span class="presetNum">' + pad(i + 1) + '</span>' +
         '<span class="presetInfo">' +
           '<span class="presetName">' + s.name + '</span>' +
-          '<span class="presetMeta">' + s.place + ' · ' + s.genre + '</span>' +
+          '<span class="presetMeta">' + s.genre + '</span>' +
         '</span>' +
         '<span class="presetPlay">NOW</span>';
-      li.addEventListener('click', () => selectStation(i));
+      li.addEventListener('click', () => selectStation(globalIndex));
       presetList.appendChild(li);
     });
-    updatePlayIcon(false);
   }
 
   function selectStation(i){
     currentIndex = i;
     const s = stations[i];
     stationName.textContent = s.name;
-    stationSub.textContent = s.place + ' · ' + s.genre;
+    stationSub.textContent = networkLabel(s.network) + ' · ' + s.genre;
     playBtn.disabled = false;
-    moveNeedle(i);
-    highlightPreset(i);
+    if(activeNetwork !== s.network){ selectNetwork(s.network); }
+    else { renderPresetList(); }
     playCurrent();
-  }
-
-  function moveNeedle(i){
-    const pct = stations.length > 1 ? (i / (stations.length - 1)) * 100 : 50;
-    needle.style.left = pct + '%';
-  }
-
-  function highlightPreset(i){
-    document.querySelectorAll('.presetRow').forEach((row, idx) => {
-      row.classList.toggle('active', idx === i);
-    });
-    document.querySelectorAll('.tick').forEach((t, idx) => {
-      t.classList.toggle('active', idx === i);
-    });
   }
 
   function playCurrent(){
@@ -391,6 +424,15 @@
     audio.play().catch(() => {
       statusEl.textContent = "Couldn't connect — try another preset";
     });
+  }
+
+  function stepStation(delta){
+    if(currentIndex === null) return;
+    const filtered = stations.filter(s => s.network === activeNetwork);
+    const curFiltered = filtered.findIndex(s => stations.indexOf(s) === currentIndex);
+    if(curFiltered === -1) return;
+    const next = Math.min(filtered.length - 1, Math.max(0, curFiltered + delta));
+    selectStation(stations.indexOf(filtered[next]));
   }
 
   function updatePlayIcon(isPlaying){
@@ -406,7 +448,7 @@
     if('mediaSession' in navigator && currentIndex !== null){
       const s = stations[currentIndex];
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: s.name, artist: s.place, album: s.genre
+        title: s.name, artist: networkLabel(s.network), album: s.genre
       });
       navigator.mediaSession.playbackState = 'playing';
     }
@@ -435,17 +477,18 @@
   if('mediaSession' in navigator){
     navigator.mediaSession.setActionHandler('play', () => audio.play().catch(() => {}));
     navigator.mediaSession.setActionHandler('pause', () => audio.pause());
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
-      if(currentIndex === null) return;
-      selectStation(Math.max(0, currentIndex - 1));
-    });
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
-      if(currentIndex === null) return;
-      selectStation(Math.min(stations.length - 1, currentIndex + 1));
-    });
+    navigator.mediaSession.setActionHandler('previoustrack', () => stepStation(-1));
+    navigator.mediaSession.setActionHandler('nexttrack', () => stepStation(1));
   }
 
-  buildUI();
+  window.addEventListener('resize', positionUnderline);
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(positionUnderline);
+  }
+
+  buildTabs();
+  selectNetwork(activeNetwork);
+  updatePlayIcon(false);
 </script>
 </body>
 </html>
