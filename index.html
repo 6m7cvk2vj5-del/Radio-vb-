@@ -161,6 +161,32 @@
     gap: 10px;
     padding-bottom: 6px;
   }
+
+  .controls{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+  }
+
+  .skipBtn{
+    appearance: none;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: border-color .2s ease, color .2s ease, opacity .2s ease;
+  }
+  .skipBtn svg{ width: 18px; height: 18px; }
+  .skipBtn:disabled{ opacity: 0.3; }
+  .skipBtn:active:not(:disabled){ border-color: var(--amber); color: var(--amber); }
+
   .playBtn{
     appearance: none;
     width: 72px;
@@ -273,7 +299,12 @@
       </div>
 
       <div class="playRow">
-        <button class="playBtn" id="playBtn" disabled aria-label="Play"></button>
+        <div class="controls">
+          <button class="skipBtn" id="shuffleBtn" aria-label="Shuffle channel"></button>
+          <button class="skipBtn" id="prevBtn" disabled aria-label="Previous channel"></button>
+          <button class="playBtn" id="playBtn" disabled aria-label="Play"></button>
+          <button class="skipBtn" id="nextBtn" disabled aria-label="Next channel"></button>
+        </div>
         <p class="status" id="status"></p>
       </div>
     </main>
@@ -341,12 +372,18 @@
 
   const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
   const PAUSE_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
+  const PREV_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+  const NEXT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+  const SHUFFLE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>';
 
   let currentIndex = null;
   let activeNetwork = networks[0].id;
 
   const audio = document.getElementById('audio');
   const playBtn = document.getElementById('playBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const shuffleBtn = document.getElementById('shuffleBtn');
   const stationName = document.getElementById('stationName');
   const stationSub = document.getElementById('stationSub');
   const statusEl = document.getElementById('status');
@@ -357,6 +394,11 @@
 
   function pad(n){ return String(n).padStart(2, '0'); }
   function networkLabel(id){ return networks.find(n => n.id === id).label; }
+  function currentGroup(){ return stations.filter(s => s.network === activeNetwork); }
+  function indexWithinGroup(){
+    if(currentIndex === null) return -1;
+    return currentGroup().findIndex(s => stations.indexOf(s) === currentIndex);
+  }
 
   function buildTabs(){
     networks.forEach(net => {
@@ -376,6 +418,7 @@
     });
     positionUnderline();
     renderPresetList();
+    updateSkipButtons();
   }
 
   function positionUnderline(){
@@ -387,7 +430,7 @@
 
   function renderPresetList(){
     presetList.innerHTML = '';
-    const filtered = stations.filter(s => s.network === activeNetwork);
+    const filtered = currentGroup();
     filtered.forEach((s, i) => {
       const globalIndex = stations.indexOf(s);
       const li = document.createElement('li');
@@ -412,7 +455,7 @@
     stationSub.textContent = networkLabel(s.network) + ' · ' + s.genre;
     playBtn.disabled = false;
     if(activeNetwork !== s.network){ selectNetwork(s.network); }
-    else { renderPresetList(); }
+    else { renderPresetList(); updateSkipButtons(); }
     playCurrent();
   }
 
@@ -427,12 +470,28 @@
   }
 
   function stepStation(delta){
-    if(currentIndex === null) return;
-    const filtered = stations.filter(s => s.network === activeNetwork);
-    const curFiltered = filtered.findIndex(s => stations.indexOf(s) === currentIndex);
+    const filtered = currentGroup();
+    const curFiltered = indexWithinGroup();
     if(curFiltered === -1) return;
-    const next = Math.min(filtered.length - 1, Math.max(0, curFiltered + delta));
+    const next = curFiltered + delta;
+    if(next < 0 || next > filtered.length - 1) return;
     selectStation(stations.indexOf(filtered[next]));
+  }
+
+  function shuffleChannel(){
+    if(stations.length <= 1) return;
+    let idx;
+    do {
+      idx = Math.floor(Math.random() * stations.length);
+    } while(idx === currentIndex);
+    selectStation(idx);
+  }
+
+  function updateSkipButtons(){
+    const curFiltered = indexWithinGroup();
+    const filtered = currentGroup();
+    prevBtn.disabled = curFiltered <= 0;
+    nextBtn.disabled = curFiltered === -1 || curFiltered >= filtered.length - 1;
   }
 
   function updatePlayIcon(isPlaying){
@@ -474,6 +533,10 @@
     else { audio.pause(); }
   });
 
+  prevBtn.addEventListener('click', () => stepStation(-1));
+  nextBtn.addEventListener('click', () => stepStation(1));
+  shuffleBtn.addEventListener('click', shuffleChannel);
+
   if('mediaSession' in navigator){
     navigator.mediaSession.setActionHandler('play', () => audio.play().catch(() => {}));
     navigator.mediaSession.setActionHandler('pause', () => audio.pause());
@@ -487,6 +550,9 @@
   }
 
   buildTabs();
+  prevBtn.innerHTML = PREV_SVG;
+  nextBtn.innerHTML = NEXT_SVG;
+  shuffleBtn.innerHTML = SHUFFLE_SVG;
   selectNetwork(activeNetwork);
   updatePlayIcon(false);
 </script>
