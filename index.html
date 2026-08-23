@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Dial</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dial">
+<meta name="theme-color" content="#1C1E24">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg: #1C1E24;
+    --panel: #23262E;
+    --panel-2: #292C35;
+    --hairline: #33363F;
+    --amber: #E8A33D;
+    --amber-dim: rgba(232,163,61,0.16);
+    --text: #EDE7DA;
+    --text-dim: #8A8D95;
+    --text-faint: #5B5E66;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body{
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', -apple-system, system-ui, sans-serif;
+    overscroll-behavior-y: none;
+  }
+
+  .app{
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px 6px;
+  }
+
+  .brand{
+    font-size: 13px;
+    letter-spacing: 0.28em;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
+  .live-indicator{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-faint);
+    transition: color .3s ease;
+  }
+  .live-indicator .dot{
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    transition: background .3s ease, box-shadow .3s ease;
+  }
+  .live-indicator.on{ color: var(--amber); }
+  .live-indicator.on .dot{
+    background: var(--amber);
+    box-shadow: 0 0 8px 1px var(--amber);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  main{
+    padding: 8px 22px 20px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .now-playing{
+    padding: 14px 0 26px;
+    min-height: 74px;
+  }
+  .now-playing h1{
+    margin: 0 0 6px;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  .now-playing p{
+    margin: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+
+  .tuner{ padding: 4px 0 30px; }
+  .track{
+    position: relative;
+    height: 40px;
+  }
+  .track::before{
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 16px;
+    height: 2px;
+    background: var(--hairline);
+  }
+  .ticks{
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    height: 100%;
+  }
+  .tick{
+    appearance: none;
+    background: none;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 2px 0;
+    cursor: pointer;
+  }
+  .tick .dot{
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    transition: background .25s ease, transform .25s ease;
+  }
+  .tick .num{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    transition: color .25s ease;
+  }
+  .tick.active .dot{
+    background: var(--amber);
+    transform: scale(1.3);
+  }
+  .tick.active .num{ color: var(--amber); }
+
+  .needle{
+    position: absolute;
+    top: -6px;
+    left: 0%;
+    width: 3px;
+    height: 28px;
+    background: var(--amber);
+    border-radius: 2px;
+    box-shadow: 0 0 10px 1px var(--amber-dim);
+    transform: translateX(-50%);
+    transition: left .45s cubic-bezier(.2,.8,.2,1);
+    pointer-events: none;
+  }
+
+  .playRow{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 6px;
+  }
+  .playBtn{
+    appearance: none;
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color .25s ease, box-shadow .25s ease;
+  }
+  .playBtn svg{ width: 26px; height: 26px; }
+  .playBtn:disabled{ opacity: 0.4; }
+  .playBtn.playing{
+    border-color: var(--amber);
+    box-shadow: 0 0 0 6px var(--amber-dim);
+  }
+
+  .status{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    min-height: 16px;
+    margin: 0;
+  }
+
+  .presetList{
+    list-style: none;
+    margin: 0;
+    padding: 6px 8px 40px;
+    flex: 1;
+  }
+  .presetRow{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 14px;
+    border-bottom: 1px solid var(--hairline);
+    cursor: pointer;
+    transition: background .2s ease;
+  }
+  .presetRow:active{ background: var(--panel); }
+  .presetRow.active{ background: var(--panel-2); }
+
+  .presetNum{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--text-faint);
+    width: 22px;
+    flex-shrink: 0;
+  }
+  .presetRow.active .presetNum{ color: var(--amber); }
+
+  .presetInfo{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  .presetName{
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .presetMeta{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .presetPlay{
+    font-size: 11px;
+    color: var(--text-faint);
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .presetRow.active .presetPlay{
+    opacity: 1;
+    color: var(--amber);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .needle, .live-indicator .dot{ transition: none; animation: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <span class="brand">DIAL</span>
+      <span class="live-indicator" id="liveIndicator"><span class="dot"></span>LIVE</span>
+    </header>
+
+    <main>
+      <div class="now-playing">
+        <h1 id="stationName">Pick a preset</h1>
+        <p id="stationSub">Nine curated, ad-free stations below</p>
+      </div>
+
+      <div class="tuner">
+        <div class="track">
+          <div class="needle" id="needle"></div>
+          <div class="ticks" id="ticks"></div>
+        </div>
+      </div>
+
+      <div class="playRow">
+        <button class="playBtn" id="playBtn" disabled aria-label="Play"></button>
+        <p class="status" id="status"></p>
+      </div>
+    </main>
+
+    <ul class="presetList" id="presetList"></ul>
+  </div>
+
+<audio id="audio" preload="none"></audio>
+
+<script>
+  const stations = [
+    { id: 1, name: "FIP", place: "Paris", genre: "Eclectic mix", url: "https://icecast.radiofrance.fr/fip-midfi.mp3?id=radiofrance" },
+    { id: 2, name: "Radio Paradise", place: "California", genre: "Rock · world · electronic", url: "https://stream-tx3.radioparadise.com/mp3-192" },
+    { id: 3, name: "Groove Salad", place: "SomaFM", genre: "Ambient · downtempo", url: "https://ice1.somafm.com/groovesalad-128-mp3" },
+    { id: 4, name: "Secret Agent", place: "SomaFM", genre: "Lounge · spy jazz", url: "https://ice1.somafm.com/secretagent-128-mp3" },
+    { id: 5, name: "Drone Zone", place: "SomaFM", genre: "Deep ambient", url: "https://ice1.somafm.com/dronezone-128-mp3" },
+    { id: 6, name: "KEXP", place: "Seattle", genre: "Indie · alternative", url: "https://kexp.streamguys1.com/kexp160.aac" },
+    { id: 7, name: "KCRW Eclectic24", place: "Santa Monica", genre: "Eclectic DJ mix", url: "https://kcrw.streamguys1.com/kcrw_128k_aac_e24" },
+    { id: 8, name: "NTS 1", place: "London", genre: "Underground · global", url: "https://stream-relay-geo.ntslive.net/stream" },
+    { id: 9, name: "NTS 2", place: "London", genre: "Leftfield · experimental", url: "https://stream-relay-geo.ntslive.net/stream2" },
+  ];
+
+  const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  const PAUSE_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
+
+  let currentIndex = null;
+
+  const audio = document.getElementById('audio');
+  const playBtn = document.getElementById('playBtn');
+  const stationName = document.getElementById('stationName');
+  const stationSub = document.getElementById('stationSub');
+  const statusEl = document.getElementById('status');
+  const needle = document.getElementById('needle');
+  const presetList = document.getElementById('presetList');
+  const ticksEl = document.getElementById('ticks');
+  const liveIndicator = document.getElementById('liveIndicator');
+
+  function pad(n){ return String(n).padStart(2, '0'); }
+
+  function buildUI(){
+    stations.forEach((s, i) => {
+      const tick = document.createElement('button');
+      tick.className = 'tick';
+      tick.setAttribute('aria-label', s.name);
+      tick.innerHTML = '<span class="dot"></span><span class="num">' + pad(s.id) + '</span>';
+      tick.addEventListener('click', () => selectStation(i));
+      ticksEl.appendChild(tick);
+
+      const li = document.createElement('li');
+      li.className = 'presetRow';
+      li.innerHTML =
+        '<span class="presetNum">' + pad(s.id) + '</span>' +
+        '<span class="presetInfo">' +
+          '<span class="presetName">' + s.name + '</span>' +
+          '<span class="presetMeta">' + s.place + ' · ' + s.genre + '</span>' +
+        '</span>' +
+        '<span class="presetPlay">NOW</span>';
+      li.addEventListener('click', () => selectStation(i));
+      presetList.appendChild(li);
+    });
+    updatePlayIcon(false);
+  }
+
+  function selectStation(i){
+    currentIndex = i;
+    const s = stations[i];
+    stationName.textContent = s.name;
+    stationSub.textContent = s.place + ' · ' + s.genre;
+    playBtn.disabled = false;
+    moveNeedle(i);
+    highlightPreset(i);
+    playCurrent();
+  }
+
+  function moveNeedle(i){
+    const pct = stations.length > 1 ? (i / (stations.length - 1)) * 100 : 50;
+    needle.style.left = pct + '%';
+  }
+
+  function highlightPreset(i){
+    document.querySelectorAll('.presetRow').forEach((row, idx) => {
+      row.classList.toggle('active', idx === i);
+    });
+    document.querySelectorAll('.tick').forEach((t, idx) => {
+      t.classList.toggle('active', idx === i);
+    });
+  }
+
+  function playCurrent(){
+    if(currentIndex === null) return;
+    const s = stations[currentIndex];
+    if(audio.src !== s.url){ audio.src = s.url; }
+    statusEl.textContent = 'Connecting…';
+    audio.play().catch(() => {
+      statusEl.textContent = "Couldn't connect — try another preset";
+    });
+  }
+
+  function updatePlayIcon(isPlaying){
+    playBtn.innerHTML = isPlaying ? PAUSE_SVG : PLAY_SVG;
+    playBtn.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
+    playBtn.classList.toggle('playing', isPlaying);
+  }
+
+  audio.addEventListener('playing', () => {
+    statusEl.textContent = '';
+    updatePlayIcon(true);
+    liveIndicator.classList.add('on');
+    if('mediaSession' in navigator && currentIndex !== null){
+      const s = stations[currentIndex];
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: s.name, artist: s.place, album: s.genre
+      });
+      navigator.mediaSession.playbackState = 'playing';
+    }
+  });
+
+  audio.addEventListener('waiting', () => { statusEl.textContent = 'Buffering…'; });
+
+  audio.addEventListener('error', () => {
+    statusEl.textContent = "Couldn't connect — try another preset";
+    updatePlayIcon(false);
+    liveIndicator.classList.remove('on');
+  });
+
+  audio.addEventListener('pause', () => {
+    updatePlayIcon(false);
+    liveIndicator.classList.remove('on');
+    if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+  });
+
+  playBtn.addEventListener('click', () => {
+    if(currentIndex === null) return;
+    if(audio.paused){ audio.play().catch(() => {}); }
+    else { audio.pause(); }
+  });
+
+  if('mediaSession' in navigator){
+    navigator.mediaSession.setActionHandler('play', () => audio.play().catch(() => {}));
+    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      if(currentIndex === null) return;
+      selectStation(Math.max(0, currentIndex - 1));
+    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      if(currentIndex === null) return;
+      selectStation(Math.min(stations.length - 1, currentIndex + 1));
+    });
+  }
+
+  buildUI();
+</script>
+</body>
+</html>
