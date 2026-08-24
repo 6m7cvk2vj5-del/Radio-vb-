@@ -457,19 +457,22 @@
     { network:'piano', name:'Peaceful Piano', genre:'Solo piano',      url:'https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac' },
     { network:'piano', name:'Relax',          genre:'Piano · ambient', url:'https://relax.stream.publicradio.org/relax.aac' },
 
-    // CBC Music — genre web radio streams (StreamTheWorld). URLs constructed from the
-    // documented .pls catalog names via the general livestream-redirect pattern —
-    // not individually verified the way FIP/BBC were, so treat as best-effort.
-    { network:'cbc', name:'Piano',          genre:'Piano',              url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_PIANO1_H.mp3' },
-    { network:'cbc', name:'Electronic',     genre:'Electronic · dance', url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_ELECTR_H.mp3' },
-    { network:'cbc', name:'Radio 2 Jazz',   genre:'Jazz',               url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_R2JAZZ_H.mp3' },
-    { network:'cbc', name:'Indie',          genre:'Canadian indie',     url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_INDIE1_H.mp3' },
-    { network:'cbc', name:'Ambient Lounge', genre:'Ambient lounge',     url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_AMBIEN_H.mp3' },
+    // CBC Music — genre web radio streams (StreamTheWorld). Rather than guess the direct
+    // play URL, we fetch CBC's own .pls file at play time and parse out the real stream
+    // URL it contains — same source CBC's site itself publishes, so this should self-correct
+    // if the underlying stream URL ever changes.
+    { network:'cbc', name:'Piano',          genre:'Piano',              plsCallsign:'CBC_PIANO1_H' },
+    { network:'cbc', name:'Electronic',     genre:'Electronic · dance', plsCallsign:'CBC_ELECTR_H' },
+    { network:'cbc', name:'Radio 2 Jazz',   genre:'Jazz',               plsCallsign:'CBC_R2JAZZ_H' },
+    { network:'cbc', name:'Indie',          genre:'Canadian indie',     plsCallsign:'CBC_INDIE1_H' },
+    { network:'cbc', name:'Ambient Lounge', genre:'Ambient lounge',     plsCallsign:'CBC_AMBIEN_H' },
 
-    // BBC — HLS via the lstn.lv redirect, which resolves BBC's rotating "pool" URLs server-side
-    { network:'bbc', name:'Radio 1 Dance', genre:'EDM · house',       url:'https://lstn.lv/bbcradio.m3u8?station=bbc_radio_one_dance&bitrate=96000' },
-    { network:'bbc', name:'6 Music',       genre:'Alt · indie',       url:'https://lstn.lv/bbcradio.m3u8?station=bbc_6music&bitrate=96000' },
-    { network:'bbc', name:'Radio 3',       genre:'Classical · piano', url:'https://lstn.lv/bbcradio.m3u8?station=bbc_radio_three&bitrate=96000' },
+    // BBC — direct https HLS. lstn.lv (used previously) resolves to plain http, which gets
+    // blocked as mixed content on an https-hosted page — these bypass it with a known-good
+    // pool URL. BBC rotates these periodically; if one goes dead, it needs a fresh pool number.
+    { network:'bbc', name:'Radio 1 Dance', genre:'EDM · house',       url:'https://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/hls/nonuk/sbr_low/ak/bbc_radio_one_dance.m3u8' },
+    { network:'bbc', name:'6 Music',       genre:'Alt · indie',       url:'https://as-hls-ww-live.akamaized.net/pool_81827798/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio=96000.norewind.m3u8' },
+    { network:'bbc', name:'Radio 3',       genre:'Classical · piano', url:'https://as-hls-ww-live.akamaized.net/pool_23461179/live/ww/bbc_radio_three/bbc_radio_three.isml/bbc_radio_three-audio=96000.norewind.m3u8' },
   ];
 
   const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -569,11 +572,30 @@
     playCurrent();
   }
 
-  function playCurrent(){
+  async function resolvePlsUrl(callsign){
+    const res = await fetch('https://playerservices.streamtheworld.com/pls/' + callsign + '.pls');
+    if(!res.ok) throw new Error('pls fetch failed');
+    const text = await res.text();
+    const match = text.match(/File1=(\S+)/i);
+    if(!match) throw new Error('no File1 entry in pls');
+    return match[1].trim();
+  }
+
+  async function playCurrent(){
     if(currentIndex === null) return;
     const s = stations[currentIndex];
-    if(audio.src !== s.url){ audio.src = s.url; }
     statusEl.textContent = 'Connecting…';
+    let playUrl = s.url;
+    if(s.plsCallsign){
+      try{
+        playUrl = await resolvePlsUrl(s.plsCallsign);
+      } catch(e){
+        statusEl.textContent = "Couldn't connect — try another preset";
+        return;
+      }
+      if(stations[currentIndex] !== s) return; // station changed while resolving
+    }
+    if(audio.src !== playUrl){ audio.src = playUrl; }
     audio.play().catch(() => {
       statusEl.textContent = "Couldn't connect — try another preset";
     });
