@@ -351,7 +351,7 @@
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Six networks, 32 channels total</p>
+        <p id="stationSub">Eight networks, 42 channels total</p>
 
         <div class="trackCard" id="trackCard">
           <div class="artwork" id="artwork">
@@ -399,6 +399,8 @@
     { id: 'kexp', label: 'KEXP',           place: 'Seattle' },
     { id: 'kcrw', label: 'KCRW',           place: 'Santa Monica' },
     { id: 'nts',  label: 'NTS',            place: 'London' },
+    { id: 'club', label: 'Club',           place: 'Various' },
+    { id: 'piano', label: 'Piano',         place: 'MPR' },
   ];
 
   // `now` describes how to fetch now-playing metadata for a channel. Omitted = no metadata attempted.
@@ -446,6 +448,20 @@
     { network:'nts', name:'Slow Focus',     genre:'Ambient · drone',        url:'https://stream-mixtape-geo.ntslive.net/mixtape' },
     { network:'nts', name:'Memory Lane',    genre:'Psych folk · garage',    url:'https://stream-mixtape-geo.ntslive.net/mixtape6' },
     { network:'nts', name:'4 to the Floor', genre:'House · club',           url:'https://stream-mixtape-geo.ntslive.net/mixtape5' },
+
+    // Club — house, techno, and UK dance music from across Europe
+    { network:'club', name:'Rinse UK',        genre:'Garage · grime · dubstep', url:'https://admin.stream.rinse.fm/proxy/rinse_uk/stream' },
+    { network:'club', name:'Soho Radio',      genre:'House · electronic',       url:'https://sohoradiomusic.doughunt.co.uk:8010/320mp3' },
+    { network:'club', name:'Refuge Worldwide', genre:'Dance · techno (Berlin)', url:'https://streaming.radio.co/s3699c5e49/listen' },
+    { network:'club', name:'Blue Marlin Ibiza', genre:'House · lounge (Ibiza)', url:'https://ibizasonica.streaming-pro.com:8001/bluemarlin' },
+    { network:'club', name:'Radio Meuh',      genre:'Electronic · funk (French Alps)', url:'http://radiomeuh.ice.infomaniak.ch/radiomeuh-128.mp3' },
+    { network:'club', name:'Kiosk Radio',     genre:'Electronic · jazz (Brussels)', url:'https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b' },
+    { network:'club', name:'Sub.FM',          genre:'Dubstep · jungle · techno', url:'http://subfm.radioca.st/Sub.FM' },
+    { network:'club', name:'TM Radio',        genre:'Progressive · tech house',  url:'https://stream.tm-radio.com/tribalmixes' },
+
+    // Piano — from YourClassical (Minnesota Public Radio), listener-supported and ad-free
+    { network:'piano', name:'Peaceful Piano', genre:'Solo piano',      url:'https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac' },
+    { network:'piano', name:'Relax',          genre:'Piano · ambient', url:'https://relax.stream.publicradio.org/relax.aac' },
   ];
 
   const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
