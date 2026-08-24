@@ -351,7 +351,7 @@
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Eight networks, 42 channels total</p>
+        <p id="stationSub">Eight networks, 48 channels total</p>
 
         <div class="trackCard" id="trackCard">
           <div class="artwork" id="artwork">
@@ -396,11 +396,11 @@
     { id: 'fip',  label: 'FIP',            place: 'Paris' },
     { id: 'rp',   label: 'Radio Paradise', place: 'California' },
     { id: 'soma', label: 'SomaFM',         place: 'San Francisco' },
-    { id: 'kexp', label: 'KEXP',           place: 'Seattle' },
-    { id: 'kcrw', label: 'KCRW',           place: 'Santa Monica' },
     { id: 'nts',  label: 'NTS',            place: 'London' },
     { id: 'club', label: 'Club',           place: 'Various' },
     { id: 'piano', label: 'Piano',         place: 'MPR' },
+    { id: 'cbc',  label: 'CBC',            place: 'Toronto' },
+    { id: 'bbc',  label: 'BBC',            place: 'London' },
   ];
 
   // `now` describes how to fetch now-playing metadata for a channel. Omitted = no metadata attempted.
@@ -435,12 +435,6 @@
     { network:'soma', name:'Lush',             genre:'Mellow vocals',      url:'https://ice1.somafm.com/lush-128-mp3' },
     { network:'soma', name:'Space Station',    genre:'Space music',        url:'https://ice1.somafm.com/spacestation-128-mp3' },
 
-    // KEXP — well-documented public API
-    { network:'kexp', name:'KEXP', genre:'Indie · alternative', url:'https://kexp.streamguys1.com/kexp160.aac', now:{type:'kexp'} },
-
-    // KCRW — no metadata: tracklist endpoint/channel slug for Eclectic24 unconfirmed
-    { network:'kcrw', name:'Eclectic24', genre:'Eclectic DJ mix', url:'https://kcrw.streamguys1.com/kcrw_128k_aac_e24' },
-
     // NTS — live channels show DJ/show name + artwork; Infinite Mixtapes have no confirmed metadata endpoint
     { network:'nts', name:'NTS 1',          genre:'Underground · global',   url:'https://stream-relay-geo.ntslive.net/stream', now:{type:'nts', channel:'1'} },
     { network:'nts', name:'NTS 2',          genre:'Leftfield · experimental', url:'https://stream-relay-geo.ntslive.net/stream2', now:{type:'nts', channel:'2'} },
@@ -462,6 +456,20 @@
     // Piano — from YourClassical (Minnesota Public Radio), listener-supported and ad-free
     { network:'piano', name:'Peaceful Piano', genre:'Solo piano',      url:'https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac' },
     { network:'piano', name:'Relax',          genre:'Piano · ambient', url:'https://relax.stream.publicradio.org/relax.aac' },
+
+    // CBC Music — genre web radio streams (StreamTheWorld). URLs constructed from the
+    // documented .pls catalog names via the general livestream-redirect pattern —
+    // not individually verified the way FIP/BBC were, so treat as best-effort.
+    { network:'cbc', name:'Piano',          genre:'Piano',              url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_PIANO1_H.mp3' },
+    { network:'cbc', name:'Electronic',     genre:'Electronic · dance', url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_ELECTR_H.mp3' },
+    { network:'cbc', name:'Radio 2 Jazz',   genre:'Jazz',               url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_R2JAZZ_H.mp3' },
+    { network:'cbc', name:'Indie',          genre:'Canadian indie',     url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_INDIE1_H.mp3' },
+    { network:'cbc', name:'Ambient Lounge', genre:'Ambient lounge',     url:'https://playerservices.streamtheworld.com/api/livestream-redirect/CBC_AMBIEN_H.mp3' },
+
+    // BBC — HLS via the lstn.lv redirect, which resolves BBC's rotating "pool" URLs server-side
+    { network:'bbc', name:'Radio 1 Dance', genre:'EDM · house',       url:'https://lstn.lv/bbcradio.m3u8?station=bbc_radio_one_dance&bitrate=96000' },
+    { network:'bbc', name:'6 Music',       genre:'Alt · indie',       url:'https://lstn.lv/bbcradio.m3u8?station=bbc_6music&bitrate=96000' },
+    { network:'bbc', name:'Radio 3',       genre:'Classical · piano', url:'https://lstn.lv/bbcradio.m3u8?station=bbc_radio_three&bitrate=96000' },
   ];
 
   const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -648,15 +656,6 @@
     return { title: title, artist: artist, cover: cover, spotifyQuery: artist + ' ' + title };
   }
 
-  async function fetchKexpNow(){
-    const res = await fetch('https://api.kexp.org/v2/plays/');
-    if(!res.ok) return null;
-    const data = await res.json();
-    const entry = data.results && data.results[0];
-    if(!entry || !entry.song || !entry.artist) return null;
-    return { title: entry.song, artist: entry.artist, cover: entry.thumbnail_uri, spotifyQuery: entry.artist + ' ' + entry.song };
-  }
-
   async function fetchNtsNow(channel){
     const res = await fetch('https://www.nts.live/api/v2/live');
     if(!res.ok) return null;
@@ -673,7 +672,6 @@
     if(!station.now) return null;
     try{
       if(station.now.type === 'fip') return await fetchFipNow(station.now.id);
-      if(station.now.type === 'kexp') return await fetchKexpNow();
       if(station.now.type === 'nts') return await fetchNtsNow(station.now.channel);
     } catch(e){ return null; }
     return null;
