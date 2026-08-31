@@ -13,7 +13,7 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
-  :root{
+  :root, [data-theme="dark"]{
     --bg: #1C1E24;
     --panel: #23262E;
     --panel-2: #292C35;
@@ -23,6 +23,19 @@
     --text: #EDE7DA;
     --text-dim: #8A8D95;
     --text-faint: #5B5E66;
+    --font-scale: 1;
+  }
+
+  [data-theme="light"]{
+    --bg: #F6F2E9;
+    --panel: #FFFFFF;
+    --panel-2: #EFE9DA;
+    --hairline: #DED6C4;
+    --amber: #B8722A;
+    --amber-dim: rgba(184,114,42,0.14);
+    --text: #2A2520;
+    --text-dim: #6B6459;
+    --text-faint: #9C9488;
   }
 
   *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -53,7 +66,7 @@
   }
 
   .brand{
-    font-size: 13px;
+    font-size: calc(13px * var(--font-scale));
     letter-spacing: 0.28em;
     color: var(--text-dim);
     font-weight: 500;
@@ -64,7 +77,7 @@
     align-items: center;
     gap: 6px;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
+    font-size: calc(11px * var(--font-scale));
     letter-spacing: 0.12em;
     color: var(--text-faint);
     transition: color .3s ease;
@@ -82,9 +95,118 @@
     box-shadow: 0 0 8px 1px var(--amber);
     animation: pulse 1.8s ease-in-out infinite;
   }
+  .headerRight{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
   @keyframes pulse{
     0%, 100% { opacity: 1; }
     50% { opacity: 0.45; }
+  }
+
+  .gearBtn{
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 4px;
+    color: var(--text-faint);
+    display: flex;
+    cursor: pointer;
+    transition: color .2s ease;
+  }
+  .gearBtn svg{ width: 19px; height: 19px; }
+  .gearBtn:active{ color: var(--amber); }
+
+  .settingsOverlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease;
+    z-index: 50;
+    display: flex;
+    align-items: flex-end;
+  }
+  .settingsOverlay.open{
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .settingsPanel{
+    width: 100%;
+    background: var(--panel);
+    border-top: 1px solid var(--hairline);
+    border-radius: 18px 18px 0 0;
+    padding: 18px 22px calc(28px + env(safe-area-inset-bottom));
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.2,.8,.2,1);
+  }
+  .settingsOverlay.open .settingsPanel{
+    transform: translateY(0);
+  }
+
+  .settingsHeader{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 500;
+    font-size: calc(16px * var(--font-scale));
+    color: var(--text);
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .settingsClose{
+    appearance: none;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: calc(16px * var(--font-scale));
+    cursor: pointer;
+    padding: 2px 6px;
+  }
+
+  .settingsRow{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+  }
+  .settingsLabel{
+    font-size: calc(14px * var(--font-scale));
+    color: var(--text);
+  }
+
+  .segmented{
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: 9px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .segmented button{
+    appearance: none;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: calc(12px * var(--font-scale));
+    padding: 7px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background .2s ease, color .2s ease;
+  }
+  .segmented button.active{
+    background: var(--amber);
+    color: var(--bg);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .settingsOverlay, .settingsPanel{ transition: none; }
   }
 
   main{
@@ -97,7 +219,7 @@
   }
   .now-playing h1{
     margin: 0 0 6px;
-    font-size: 26px;
+    font-size: calc(26px * var(--font-scale));
     font-weight: 700;
     letter-spacing: -0.01em;
     line-height: 1.1;
@@ -105,7 +227,7 @@
   .now-playing p{
     margin: 0;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 13px;
+    font-size: calc(13px * var(--font-scale));
     color: var(--text-dim);
     letter-spacing: 0.02em;
   }
@@ -145,7 +267,7 @@
   }
   .trackTitle{
     font-family: 'Space Grotesk', sans-serif !important;
-    font-size: 15px;
+    font-size: calc(15px * var(--font-scale));
     font-weight: 500;
     color: var(--text);
     white-space: nowrap;
@@ -154,7 +276,7 @@
     margin: 0 0 2px !important;
   }
   .trackArtist{
-    font-size: 12px !important;
+    font-size: calc(12px * var(--font-scale)) !important;
     color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
@@ -166,7 +288,7 @@
     align-items: center;
     gap: 5px;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
+    font-size: calc(11px * var(--font-scale));
     letter-spacing: 0.03em;
     color: var(--amber);
     text-decoration: none;
@@ -197,7 +319,7 @@
     border: none;
     color: var(--text-faint);
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
+    font-size: calc(12px * var(--font-scale));
     letter-spacing: 0.06em;
     text-transform: uppercase;
     padding: 4px 0;
@@ -272,7 +394,7 @@
 
   .status{
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
+    font-size: calc(12px * var(--font-scale));
     color: var(--text-dim);
     min-height: 16px;
     margin: 0;
@@ -298,7 +420,7 @@
 
   .presetNum{
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 13px;
+    font-size: calc(13px * var(--font-scale));
     color: var(--text-faint);
     width: 22px;
     flex-shrink: 0;
@@ -313,12 +435,12 @@
     min-width: 0;
   }
   .presetName{
-    font-size: 15px;
+    font-size: calc(15px * var(--font-scale));
     font-weight: 500;
   }
   .presetMeta{
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
+    font-size: calc(11px * var(--font-scale));
     color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
@@ -326,7 +448,7 @@
   }
 
   .presetPlay{
-    font-size: 11px;
+    font-size: calc(11px * var(--font-scale));
     color: var(--text-faint);
     opacity: 0;
     transition: opacity .2s ease;
@@ -345,13 +467,43 @@
   <div class="app">
     <header>
       <span class="brand">DIAL</span>
-      <span class="live-indicator" id="liveIndicator"><span class="dot"></span>LIVE</span>
+      <div class="headerRight">
+        <span class="live-indicator" id="liveIndicator"><span class="dot"></span>LIVE</span>
+        <button class="gearBtn" id="settingsBtn" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
     </header>
+
+    <div class="settingsOverlay" id="settingsOverlay">
+      <div class="settingsPanel">
+        <div class="settingsHeader">
+          <span>Settings</span>
+          <button class="settingsClose" id="settingsClose" aria-label="Close">✕</button>
+        </div>
+        <div class="settingsRow">
+          <span class="settingsLabel">Appearance</span>
+          <div class="segmented" id="themeSegmented">
+            <button data-value="dark">Dark</button>
+            <button data-value="light">Light</button>
+          </div>
+        </div>
+        <div class="settingsRow">
+          <span class="settingsLabel">Text size</span>
+          <div class="segmented" id="fontSegmented">
+            <button data-value="0.88">S</button>
+            <button data-value="1">M</button>
+            <button data-value="1.2">L</button>
+            <button data-value="1.4">XL</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Eight networks, 45 channels total</p>
+        <p id="stationSub">Nine networks, 47 channels total</p>
 
         <div class="trackCard" id="trackCard">
           <div class="artwork" id="artwork">
@@ -401,6 +553,7 @@
     { id: 'piano', label: 'Piano',         place: 'MPR' },
     { id: 'cbc',  label: 'CBC',            place: 'Toronto' },
     { id: 'bbc',  label: 'BBC',            place: 'London' },
+    { id: 'classical', label: 'Classical', place: 'Various' },
   ];
 
   // `now` describes how to fetch now-playing metadata for a channel. Omitted = no metadata attempted.
@@ -446,10 +599,10 @@
     // Club — house, techno, and UK dance music from across Europe
     { network:'club', name:'Rinse UK',        genre:'Garage · grime · dubstep', url:'https://admin.stream.rinse.fm/proxy/rinse_uk/stream' },
     { network:'club', name:'Soho Radio',      genre:'House · electronic',       url:'https://sohoradiomusic.doughunt.co.uk:8010/320mp3' },
-    { network:'club', name:'Refuge Worldwide', genre:'Dance · techno (Berlin)', url:'https://streaming.radio.co/s3699c5e49/listen' },
+    { network:'club', name:'Refuge Worldwide', genre:'Dance · techno (Berlin)', url:'https://streaming.radio.co/s3699c5e49/listen', now:{type:'radioco', id:'s3699c5e49'} },
     { network:'club', name:'Blue Marlin Ibiza', genre:'House · lounge (Ibiza)', url:'https://ibizasonica.streaming-pro.com:8001/bluemarlin' },
     { network:'club', name:'Radio Meuh',      genre:'Electronic · funk (French Alps)', url:'http://radiomeuh.ice.infomaniak.ch/radiomeuh-128.mp3' },
-    { network:'club', name:'Kiosk Radio',     genre:'Electronic · jazz (Brussels)', url:'https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b' },
+    { network:'club', name:'Kiosk Radio',     genre:'Electronic · jazz (Brussels)', url:'https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b', now:{type:'airtime', host:'kioskradiobxl.out.airtime.pro'} },
     { network:'club', name:'Sub.FM',          genre:'Dubstep · jungle · techno', url:'http://subfm.radioca.st/Sub.FM' },
     { network:'club', name:'TM Radio',        genre:'Progressive · tech house',  url:'https://stream.tm-radio.com/tribalmixes' },
 
@@ -469,6 +622,10 @@
     { network:'bbc', name:'Radio 1 Dance', genre:'EDM · house',       url:'https://as-hls-ww-live.akamaized.net/pool_62063831/live/ww/bbc_radio_one_dance/bbc_radio_one_dance.isml/bbc_radio_one_dance-audio=96000.norewind.m3u8' },
     { network:'bbc', name:'6 Music',       genre:'Alt · indie',       url:'https://as-hls-ww-live.akamaized.net/pool_81827798/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio=96000.norewind.m3u8' },
     { network:'bbc', name:'Radio 3',       genre:'Classical · piano', url:'https://as-hls-ww-live.akamaized.net/pool_23461179/live/ww/bbc_radio_three/bbc_radio_three.isml/bbc_radio_three-audio=96000.norewind.m3u8' },
+
+    // Classical — both confirmed directly from the broadcasters' own published stream pages
+    { network:'classical', name:'Radio Swiss Classic', genre:'Classical (Switzerland)', url:'https://stream.srg-ssr.ch/m/rsc_de/mp3_128' },
+    { network:'classical', name:'WCPE The Classical Station', genre:'Classical (North Carolina)', url:'https://playerservices.streamtheworld.com/api/livestream-redirect/WCPE_FMAAC128.aac' },
   ];
 
   const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -667,11 +824,46 @@
     return { title: now.broadcast_title, artist: null, cover: cover, spotifyQuery: null };
   }
 
+  async function fetchRadioCoNow(id){
+    const res = await fetch('https://public.radio.co/api/v2/' + id + '/track/current');
+    if(!res.ok) return null;
+    const data = await res.json();
+    let title = data.title || data.track_title || data.song;
+    let artist = data.artist || data.artist_name;
+    if(!title && data.name && data.name.includes(' - ')){
+      const parts = data.name.split(' - ');
+      artist = artist || parts[0];
+      title = parts.slice(1).join(' - ');
+    }
+    if(!title || !artist) return null;
+    const cover = data.artwork_url || data.artwork || data.image;
+    return { title: title, artist: artist, cover: cover, spotifyQuery: artist + ' ' + title };
+  }
+
+  async function fetchAirtimeNow(host){
+    const res = await fetch('https://' + host + '/api/live-info-v2');
+    if(!res.ok) return null;
+    const data = await res.json();
+    const current = data.tracks && data.tracks.current;
+    if(!current) return null;
+    let title = current.metadata && (current.metadata.track_title || current.metadata.name);
+    let artist = current.metadata && current.metadata.artist_name;
+    if((!title || !artist) && current.name && current.name.includes(' - ')){
+      const parts = current.name.split(' - ');
+      artist = artist || parts[0];
+      title = title || parts.slice(1).join(' - ');
+    }
+    if(!title || !artist) return null;
+    return { title: title, artist: artist, cover: null, spotifyQuery: artist + ' ' + title };
+  }
+
   async function fetchNowPlaying(station){
     if(!station.now) return null;
     try{
       if(station.now.type === 'fip') return await fetchFipNow(station.now.id);
       if(station.now.type === 'nts') return await fetchNtsNow(station.now.channel);
+      if(station.now.type === 'radioco') return await fetchRadioCoNow(station.now.id);
+      if(station.now.type === 'airtime') return await fetchAirtimeNow(station.now.host);
     } catch(e){ return null; }
     return null;
   }
@@ -747,11 +939,71 @@
     navigator.mediaSession.setActionHandler('nexttrack', () => stepStation(1));
   }
 
+  // ---------- Settings: theme + text size ----------
+
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  const settingsClose = document.getElementById('settingsClose');
+  const themeSegmented = document.getElementById('themeSegmented');
+  const fontSegmented = document.getElementById('fontSegmented');
+
+  function openSettings(){ settingsOverlay.classList.add('open'); }
+  function closeSettings(){ settingsOverlay.classList.remove('open'); }
+
+  settingsBtn.addEventListener('click', openSettings);
+  settingsClose.addEventListener('click', closeSettings);
+  settingsOverlay.addEventListener('click', (e) => {
+    if(e.target === settingsOverlay) closeSettings();
+  });
+
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    document.querySelectorAll('#themeSegmented button').forEach(b => {
+      b.classList.toggle('active', b.dataset.value === theme);
+    });
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute('content', theme === 'light' ? '#F6F2E9' : '#1C1E24');
+    try{ localStorage.setItem('dial-theme', theme); } catch(e){}
+  }
+
+  function applyFontScale(scale){
+    document.documentElement.style.setProperty('--font-scale', scale);
+    document.querySelectorAll('#fontSegmented button').forEach(b => {
+      b.classList.toggle('active', b.dataset.value === String(scale));
+    });
+    try{ localStorage.setItem('dial-font-scale', scale); } catch(e){}
+  }
+
+  themeSegmented.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if(btn) applyTheme(btn.dataset.value);
+  });
+  fontSegmented.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if(btn) applyFontScale(btn.dataset.value);
+  });
+
+  function initSettings(){
+    let savedTheme = null;
+    let savedScale = null;
+    try{
+      savedTheme = localStorage.getItem('dial-theme');
+      savedScale = localStorage.getItem('dial-font-scale');
+    } catch(e){}
+    if(!savedTheme){
+      savedTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+    }
+    applyTheme(savedTheme);
+    applyFontScale(savedScale || '1');
+  }
+
+
   window.addEventListener('resize', positionUnderline);
   if(document.fonts && document.fonts.ready){
     document.fonts.ready.then(positionUnderline);
   }
 
+  initSettings();
   buildTabs();
   prevBtn.innerHTML = PREV_SVG;
   nextBtn.innerHTML = NEXT_SVG;
