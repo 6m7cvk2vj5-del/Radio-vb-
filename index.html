@@ -503,7 +503,7 @@
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Nine networks, 47 channels total</p>
+        <p id="stationSub">Ten networks, 49 channels total</p>
 
         <div class="trackCard" id="trackCard">
           <div class="artwork" id="artwork">
@@ -554,6 +554,7 @@
     { id: 'cbc',  label: 'CBC',            place: 'Toronto' },
     { id: 'bbc',  label: 'BBC',            place: 'London' },
     { id: 'classical', label: 'Classical', place: 'Various' },
+    { id: 'yoga', label: 'Yoga', place: 'Various' },
   ];
 
   // `now` describes how to fetch now-playing metadata for a channel. Omitted = no metadata attempted.
@@ -573,10 +574,10 @@
     { network:'fip', name:'FIP Sacré Français',   genre:'French chanson',     url:'https://icecast.radiofrance.fr/fipsacrefrancais-midfi.mp3?id=radiofrance' },
 
     // Radio Paradise — its four mixes (no metadata: undocumented per-mix channel param + historic CORS issues)
-    { network:'rp', name:'Main Mix',   genre:'Rock · eclectic',  url:'https://stream.radioparadise.com/mp3-192' },
-    { network:'rp', name:'Mellow Mix', genre:'Chill · acoustic', url:'https://stream.radioparadise.com/mellow-192' },
-    { network:'rp', name:'Rock Mix',   genre:'Rock-focused',     url:'https://stream.radioparadise.com/rock-192' },
-    { network:'rp', name:'Global Mix', genre:'World · eclectic', url:'https://stream.radioparadise.com/world-etc-192' },
+    { network:'rp', name:'Main Mix',   genre:'Rock · eclectic',  url:'https://stream.radioparadise.com/mp3-192', now:{type:'rp', chan:0} },
+    { network:'rp', name:'Mellow Mix', genre:'Chill · acoustic', url:'https://stream.radioparadise.com/mellow-192', now:{type:'rp', chan:1} },
+    { network:'rp', name:'Rock Mix',   genre:'Rock-focused',     url:'https://stream.radioparadise.com/rock-192', now:{type:'rp', chan:2} },
+    { network:'rp', name:'Global Mix', genre:'World · eclectic', url:'https://stream.radioparadise.com/world-etc-192', now:{type:'rp', chan:3} },
 
     // SomaFM — no metadata: their third-party API was officially discontinued
     { network:'soma', name:'Groove Salad',     genre:'Ambient · downtempo', url:'https://ice1.somafm.com/groovesalad-128-mp3' },
@@ -601,14 +602,15 @@
     { network:'club', name:'Soho Radio',      genre:'House · electronic',       url:'https://sohoradiomusic.doughunt.co.uk:8010/320mp3' },
     { network:'club', name:'Refuge Worldwide', genre:'Dance · techno (Berlin)', url:'https://streaming.radio.co/s3699c5e49/listen', now:{type:'radioco', id:'s3699c5e49'} },
     { network:'club', name:'Blue Marlin Ibiza', genre:'House · lounge (Ibiza)', url:'https://ibizasonica.streaming-pro.com:8001/bluemarlin' },
-    { network:'club', name:'Radio Meuh',      genre:'Electronic · funk (French Alps)', url:'http://radiomeuh.ice.infomaniak.ch/radiomeuh-128.mp3' },
+    { network:'club', name:'Radio Meuh',      genre:'Electronic · funk (French Alps)', url:'https://radiomeuh.ice.infomaniak.ch/radiomeuh-128.mp3', now:{type:'icecast', host:'radiomeuh.ice.infomaniak.ch', mount:'/radiomeuh-128.mp3'} },
     { network:'club', name:'Kiosk Radio',     genre:'Electronic · jazz (Brussels)', url:'https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b', now:{type:'airtime', host:'kioskradiobxl.out.airtime.pro'} },
-    { network:'club', name:'Sub.FM',          genre:'Dubstep · jungle · techno', url:'http://subfm.radioca.st/Sub.FM' },
+    { network:'club', name:'Sub.FM',          genre:'Dubstep · jungle · techno', url:'https://subfm.radioca.st/Sub.FM' },
     { network:'club', name:'TM Radio',        genre:'Progressive · tech house',  url:'https://stream.tm-radio.com/tribalmixes' },
 
     // Piano — from YourClassical (Minnesota Public Radio), listener-supported and ad-free
     { network:'piano', name:'Peaceful Piano', genre:'Solo piano',      url:'https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac' },
     { network:'piano', name:'Relax',          genre:'Piano · ambient', url:'https://relax.stream.publicradio.org/relax.aac' },
+    { network:'piano', name:'RauteMusik Solo Piano', genre:'Contemporary solo piano', url:'https://solopiano-high.rautemusik.fm/' },
 
     // CBC Music — the genre-specific StreamTheWorld streams turned out to be unreachable from
     // a browser (their .pls metadata isn't CORS-enabled for third-party fetch). These use CBC's
@@ -619,13 +621,16 @@
     // BBC — direct https HLS. lstn.lv (used previously) resolves to plain http, which gets
     // blocked as mixed content on an https-hosted page — these bypass it with a known-good
     // pool URL. BBC rotates these periodically; if one goes dead, it needs a fresh pool number.
-    { network:'bbc', name:'Radio 1 Dance', genre:'EDM · house',       url:'https://as-hls-ww-live.akamaized.net/pool_62063831/live/ww/bbc_radio_one_dance/bbc_radio_one_dance.isml/bbc_radio_one_dance-audio=96000.norewind.m3u8' },
-    { network:'bbc', name:'6 Music',       genre:'Alt · indie',       url:'https://as-hls-ww-live.akamaized.net/pool_81827798/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio=96000.norewind.m3u8' },
-    { network:'bbc', name:'Radio 3',       genre:'Classical · piano', url:'https://as-hls-ww-live.akamaized.net/pool_23461179/live/ww/bbc_radio_three/bbc_radio_three.isml/bbc_radio_three-audio=96000.norewind.m3u8' },
+    { network:'bbc', name:'Radio 1 Dance', genre:'EDM · house',       url:'https://as-hls-ww-live.akamaized.net/pool_62063831/live/ww/bbc_radio_one_dance/bbc_radio_one_dance.isml/bbc_radio_one_dance-audio=96000.norewind.m3u8', now:{type:'bbc', service:'bbc_radio_one_dance'} },
+    { network:'bbc', name:'6 Music',       genre:'Alt · indie',       url:'https://as-hls-ww-live.akamaized.net/pool_81827798/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio=96000.norewind.m3u8', now:{type:'bbc', service:'bbc_6music'} },
+    { network:'bbc', name:'Radio 3',       genre:'Classical · piano', url:'https://as-hls-ww-live.akamaized.net/pool_23461179/live/ww/bbc_radio_three/bbc_radio_three.isml/bbc_radio_three-audio=96000.norewind.m3u8', now:{type:'bbc', service:'bbc_radio_three'} },
 
     // Classical — both confirmed directly from the broadcasters' own published stream pages
     { network:'classical', name:'Radio Swiss Classic', genre:'Classical (Switzerland)', url:'https://stream.srg-ssr.ch/m/rsc_de/mp3_128' },
     { network:'classical', name:'WCPE The Classical Station', genre:'Classical (North Carolina)', url:'https://playerservices.streamtheworld.com/api/livestream-redirect/WCPE_FMAAC128.aac' },
+
+    // Yoga / meditation — continuous soundscapes rather than track-based playlists
+    { network:'yoga', name:'24/7 Nature Radio', genre:'Birdsong · rivers · rain', url:'https://stream.zeno.fm/m26e7b22mrruv' },
   ];
 
   const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -857,6 +862,50 @@
     return { title: title, artist: artist, cover: null, spotifyQuery: artist + ' ' + title };
   }
 
+  async function fetchIcecastNow(host, mount){
+    const res = await fetch('https://' + host + '/status-json.xsl');
+    if(!res.ok) return null;
+    const data = await res.json();
+    let sources = data.icestats && data.icestats.source;
+    if(!sources) return null;
+    if(!Array.isArray(sources)) sources = [sources];
+    const src = sources.find(s => s.listenurl && s.listenurl.endsWith(mount)) || sources[0];
+    const raw = src && src.title;
+    if(!raw) return null;
+    let title = raw, artist = null;
+    if(raw.includes(' - ')){
+      const parts = raw.split(' - ');
+      artist = parts[0].trim();
+      title = parts.slice(1).join(' - ').trim();
+    }
+    if(!artist) return null;
+    return { title: title, artist: artist, cover: null, spotifyQuery: artist + ' ' + title };
+  }
+
+  async function fetchBbcNow(serviceId){
+    const res = await fetch('https://rms.api.bbc.co.uk/v2/services/' + serviceId + '/segments/latest?experience=domestic&offset=0&limit=1');
+    if(!res.ok) return null;
+    const data = await res.json();
+    const item = data.data && data.data[0];
+    if(!item || item.segment_type !== 'music') return null;
+    const artist = item.titles && item.titles.primary;
+    const title = item.titles && item.titles.secondary;
+    if(!artist || !title) return null;
+    let cover = item.image_url;
+    if(cover) cover = cover.replace('{recipe}', '400x400');
+    return { title: title, artist: artist, cover: cover, spotifyQuery: artist + ' ' + title };
+  }
+
+  async function fetchRpNow(chan){
+    const res = await fetch('https://api.radioparadise.com/api/now_playing?chan=' + chan);
+    if(!res.ok) return null;
+    const data = await res.json();
+    const title = data.title;
+    const artist = data.artist;
+    if(!title || !artist) return null;
+    return { title: title, artist: artist, cover: data.cover, spotifyQuery: artist + ' ' + title };
+  }
+
   async function fetchNowPlaying(station){
     if(!station.now) return null;
     try{
@@ -864,6 +913,9 @@
       if(station.now.type === 'nts') return await fetchNtsNow(station.now.channel);
       if(station.now.type === 'radioco') return await fetchRadioCoNow(station.now.id);
       if(station.now.type === 'airtime') return await fetchAirtimeNow(station.now.host);
+      if(station.now.type === 'icecast') return await fetchIcecastNow(station.now.host, station.now.mount);
+      if(station.now.type === 'bbc') return await fetchBbcNow(station.now.service);
+      if(station.now.type === 'rp') return await fetchRpNow(station.now.chan);
     } catch(e){ return null; }
     return null;
   }
