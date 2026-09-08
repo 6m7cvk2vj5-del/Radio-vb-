@@ -503,7 +503,7 @@
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Ten networks, 55 channels total</p>
+        <p id="stationSub">Twelve networks, 68 channels total</p>
 
         <div class="trackCard" id="trackCard">
           <div class="artwork" id="artwork">
@@ -554,6 +554,8 @@
     { id: 'cbc',  label: 'CBC',            place: 'Toronto' },
     { id: 'bbc',  label: 'BBC',            place: 'London' },
     { id: 'classical', label: 'Classical', place: 'Various' },
+    { id: 'meditate', label: 'Meditate', place: 'Tara Brach' },
+    { id: 'dbt', label: 'DBT', place: 'Various' },
     { id: 'yoga', label: 'Yoga', place: 'Various' },
   ];
 
@@ -611,6 +613,7 @@
     { network:'piano', name:'Peaceful Piano', genre:'Solo piano',      url:'https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac' },
     { network:'piano', name:'Relax',          genre:'Piano · ambient', url:'https://relax.stream.publicradio.org/relax.aac' },
     { network:'piano', name:'RauteMusik Solo Piano', genre:'Contemporary solo piano', url:'https://solopiano-high.rautemusik.fm/' },
+    { network:'piano', name:'Whisperings Solo Piano', genre:'Solo piano since 2003', url:'https://pianosolo.streamguys1.com/live' },
 
     // CBC Music — the genre-specific StreamTheWorld streams turned out to be unreachable from
     // a browser (their .pls metadata isn't CORS-enabled for third-party fetch). These use CBC's
@@ -637,6 +640,23 @@
     { network:'yoga', name:'Deep Space One', genre:'Ambient electronic · space', url:'https://ice1.somafm.com/deepspaceone-128-mp3' },
     { network:'yoga', name:'Moss Garden', genre:'Ambient · field recordings', url:'https://radio.moss.garden/listen/moss_garden/radio.mp3' },
     { network:'yoga', name:'Ambinature Radio', genre:'Pure nature sounds', url:'https://nature-rex.radioca.st/stream' },
+
+    // Tara Brach — RAIN meditations. Finite guided recordings, not live streams: they play
+    // through and stop rather than loop or buffer indefinitely.
+    { network:'meditate', name:'A Practice of RAIN',       genre:'20 min · full RAIN practice',  url:'https://traffic.libsyn.com/tarabrach/2019-02-06-Meditation-The-Practice-of-RAIN-TaraBrach.mp3' },
+    { network:'meditate', name:'RAIN of Self-Compassion',  genre:'17 min · self-judgment',       url:'https://traffic.libsyn.com/secure/tarabrach/2020-12-30-Meditation-RAIN-of-Self-Compassion-TaraBrach.mp3' },
+    { network:'meditate', name:'Befriending Fear',         genre:'15 min · anxiety & fear',       url:'https://traffic.libsyn.com/secure/tarabrach/2023-05-09-Meditation-Befriending-Fear-with-RAIN-TaraBrach-QA4.mp3' },
+    { network:'meditate', name:'Healing Shame',            genre:'13 min · self-aversion',        url:'https://traffic.libsyn.com/secure/tarabrach/2020-07-01-Meditation-Healing-Shame-TaraBrach.mp3' },
+    { network:'meditate', name:'RAIN of Compassion',       genre:'9 min · short practice',        url:'https://traffic.libsyn.com/secure/tarabrach/2021-11-14-Meditation-RAIN-of-Compassion-TaraBrach.mp3' },
+    { network:'meditate', name:'Realizing Your Deepest Intention', genre:'51 min · talk',         url:'https://traffic.libsyn.com/secure/tarabrach/2023-01-04-Realizing-Your-Deepest-Intention-2019-01-16-TaraBrach.mp3' },
+    { network:'meditate', name:'Healing Addiction: Hungry Ghosts', genre:'53 min · talk',         url:'https://traffic.libsyn.com/tarabrach/2017-03-29-Healing-Addiction-TaraBrach.mp3' },
+    { network:'meditate', name:'Healing Codependency',     genre:'Self-focus, not outsourcing',   url:'https://sharonmartincounseling.com/wp-content/uploads/2017/09/Codependency-guided-meditation.m4a' },
+
+    // DBT (Dialectical Behavior Therapy) mindfulness practices — finite guided recordings
+    { network:'dbt', name:'Wise Mind',              genre:'DBT · wise mind concept',       url:'https://www.thedailymeditation.com/podcast-player/130621/how-to-get-wise-mind-with-dbt-meditation.mp3' },
+    { network:'dbt', name:'DBT Body Scan',          genre:'Body mindfulness',              url:'https://columbustherapyandhypnosis.com/wp-content/uploads/2025/11/Mental-Body-Scan-Female-English.mp3' },
+    { network:'dbt', name:'Breath and Body',        genre:'20 min · breath + body',        url:'https://www.mindfulnessinaction.ca/wp-content/uploads/2022/12/Awareness-of-breath-and-body-20-minutes.mp3' },
+    { network:'dbt', name:'Awareness of Breathing', genre:'14 min · breath only',          url:'https://www.mindfulnessinaction.ca/wp-content/uploads/2022/12/Awareness-of-breathing-14-minutes-1.mp3' },
   ];
 
   const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
