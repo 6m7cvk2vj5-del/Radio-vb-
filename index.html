@@ -503,7 +503,7 @@
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Twelve networks, 68 channels total</p>
+        <p id="stationSub">Thirteen networks, 77 channels total</p>
 
         <div class="trackCard" id="trackCard">
           <div class="artwork" id="artwork">
@@ -556,6 +556,7 @@
     { id: 'classical', label: 'Classical', place: 'Various' },
     { id: 'meditate', label: 'Meditate', place: 'Tara Brach' },
     { id: 'dbt', label: 'DBT', place: 'Various' },
+    { id: 'slaa', label: 'SLAA Talks', place: 'Puget Sound' },
     { id: 'yoga', label: 'Yoga', place: 'Various' },
   ];
 
@@ -613,7 +614,6 @@
     { network:'piano', name:'Peaceful Piano', genre:'Solo piano',      url:'https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac' },
     { network:'piano', name:'Relax',          genre:'Piano · ambient', url:'https://relax.stream.publicradio.org/relax.aac' },
     { network:'piano', name:'RauteMusik Solo Piano', genre:'Contemporary solo piano', url:'https://solopiano-high.rautemusik.fm/' },
-    { network:'piano', name:'Whisperings Solo Piano', genre:'Solo piano since 2003', url:'https://pianosolo.streamguys1.com/live' },
 
     // CBC Music — the genre-specific StreamTheWorld streams turned out to be unreachable from
     // a browser (their .pls metadata isn't CORS-enabled for third-party fetch). These use CBC's
@@ -653,10 +653,24 @@
     { network:'meditate', name:'Healing Codependency',     genre:'Self-focus, not outsourcing',   url:'https://sharonmartincounseling.com/wp-content/uploads/2017/09/Codependency-guided-meditation.m4a' },
 
     // DBT (Dialectical Behavior Therapy) mindfulness practices — finite guided recordings
-    { network:'dbt', name:'Wise Mind',              genre:'DBT · wise mind concept',       url:'https://www.thedailymeditation.com/podcast-player/130621/how-to-get-wise-mind-with-dbt-meditation.mp3' },
+    { network:'dbt', name:'Wise Mind Practice',      genre:'10 min · guided practice',      url:'https://storage.googleapis.com/dialecticalbehaviorthera-videos/videos/mindfulness__wise-mind.1080.mp4' },
     { network:'dbt', name:'DBT Body Scan',          genre:'Body mindfulness',              url:'https://columbustherapyandhypnosis.com/wp-content/uploads/2025/11/Mental-Body-Scan-Female-English.mp3' },
     { network:'dbt', name:'Breath and Body',        genre:'20 min · breath + body',        url:'https://www.mindfulnessinaction.ca/wp-content/uploads/2022/12/Awareness-of-breath-and-body-20-minutes.mp3' },
     { network:'dbt', name:'Awareness of Breathing', genre:'14 min · breath only',          url:'https://www.mindfulnessinaction.ca/wp-content/uploads/2022/12/Awareness-of-breathing-14-minutes-1.mp3' },
+
+    // SLAA Seattle Healing Hearts Retreat archives — finite recorded talks, re-hosted on
+    // archive.org (their direct downloads work cleanly; Google Drive's did not, due to its
+    // virus-scan interstitial on files over ~25MB).
+    { network:'slaa', name:'Dr. Patrick Carnes (2023)',      genre:"Men's Retreat keynote",       url:"https://archive.org/download/puget-sound-augustine-2023-mens-retreat-dr.-patrick-carnes-keynote-talk/Puget Sound Augustine 2023 Men\u2019s Retreat Dr. Patrick Carnes Keynote Talk.mp3" },
+    { network:'slaa', name:'Donna Bevan-Lee (2010) Pt 1',    genre:'Keynote presentation',        url:'https://archive.org/download/2010-healing-hearts-retreat-donna-bevan-lee-ph-d-msw-01-keynote-presentation-part-1/2010 Healing Hearts Retreat Donna Bevan-Lee, PhD, MSW  01 Keynote Presentation Part 1.mp3' },
+    { network:'slaa', name:'Donna Bevan-Lee (2010) Pt 2',    genre:'Keynote presentation',        url:'https://archive.org/download/2010-healing-hearts-retreat-donna-bevan-lee-ph-d-msw-02-keynote-presentation-part-2/2010 Healing Hearts Retreat Donna Bevan-Lee, PhD, MSW  02 Keynote Presentation Part 2.mp3' },
+    { network:'slaa', name:'Dr. Hilarie Cash (2011)',        genre:'Internet, video game & sex addiction', url:'https://archive.org/download/2011-healing-hearts-retreat-dr.-hilarie-cash-internet-video-game-sex-and-love-addiction/2011 Healing Hearts Retreat Dr. Hilarie Cash  Internet, Video Game, Sex, and Love Addiction.mp3' },
+    { network:'slaa', name:'Danielle DeBray (2012) Pt 1',    genre:'Emotional intimacy',          url:'https://archive.org/download/2012-healing-hearts-retreat-danielle-de-bray-ma-lmhc-01-emotional-intimacy-part-1/2012 Healing Hearts Retreat Danielle DeBray, MA, LMHC 01 Emotional Intimacy Part 1.mp3' },
+    { network:'slaa', name:'Danielle DeBray (2012) Pt 2',    genre:'Emotional intimacy',          url:'https://archive.org/download/2012-healing-hearts-retreat-danielle-de-bray-ma-lmhc-02-emotional-intimacy-part-2/2012 Healing Hearts Retreat Danielle DeBray, MA, LMHC 02 Emotional Intimacy Part 2.mp3' },
+    { network:'slaa', name:'Bevan-Lee: Self-Esteem Pt 1',    genre:'2013 retreat',                url:'https://archive.org/download/2013-healing-hearts-retreat-donna-bevan-lee-ph-d-msw-improving-self-esteem-part-1/2013 Healing Hearts Retreat Donna Bevan-Lee, PhD, MSW Improving Self Esteem Part 1.mp3' },
+    { network:'slaa', name:'Erickson: Self-Esteem Pt 2',     genre:'2013 retreat',                url:'https://archive.org/download/2013-healing-hearts-retreat-donna-bevan-lee-ph-d-msw-improving-self-esteem-part-2/2013 Healing Hearts Retreat Kirsten Erickson, MSW, LICSW Improving Self Esteem Part 2.mp3' },
+    { network:'slaa', name:'Bevan-Lee: Healthy Sexuality Pt 1', genre:'2013 retreat',             url:'https://archive.org/download/2013-healing-hearts-retreat-donna-bevan-lee-ph-d-msw-healthy-sexuality-part-1/2013 Healing Hearts Retreat Donna Bevan-Lee, PhD, MSW Healthy Sexuality Part 1.mp3' },
+    { network:'slaa', name:'Bevan-Lee: Healthy Sexuality Pt 2', genre:'2013 retreat',             url:'https://archive.org/download/2013-healing-hearts-retreat-donna-bevan-lee-ph-d-msw-healthy-sexuality-part-2/2013 Healing Hearts Retreat Donna Bevan-Lee, PhD, MSW Healthy Sexuality Part 2.mp3' },
   ];
 
   const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
