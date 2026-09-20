@@ -503,7 +503,7 @@
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Thirteen networks, 79 channels total</p>
+        <p id="stationSub">Thirteen networks, 76 channels total</p>
 
         <div class="trackCard" id="trackCard">
           <div class="artwork" id="artwork">
@@ -638,12 +638,9 @@
     { network:'classical', name:'RTHK Radio 4', genre:'Classical · Chinese orchestral (Hong Kong)', url:'https://rthkradio4-live.akamaized.net/hls/live/2040080/radio4/index_64_a.m3u8' },
 
     // Yoga / meditation — continuous soundscapes rather than track-based playlists
-    { network:'yoga', name:'a.m. ambient', genre:'Bright ambient morning mix', url:'https://radio.stereoscenic.com/ama-h' },
-    { network:'yoga', name:'Ambient Sleeping Pill', genre:'Deep ambient · continuous', url:'https://radio.stereoscenic.com/asp-h' },
-    { network:'yoga', name:'Ambient Modern', genre:'Ambient · continuous', url:'https://radio.stereoscenic.com/mod-h' },
-    { network:'yoga', name:'Deep Space One', genre:'Ambient electronic · space', url:'https://ice1.somafm.com/deepspaceone-128-mp3' },
     { network:'yoga', name:'Moss Garden', genre:'Ambient · field recordings', url:'https://radio.moss.garden/listen/moss_garden/radio.mp3' },
     { network:'yoga', name:'Ambinature Radio', genre:'Pure nature sounds', url:'https://nature-rex.radioca.st/stream' },
+    { network:'yoga', name:'Rainforest Radio', genre:'Field recordings · birds, elephants, frogs', url:'https://radio.studiokamp.com/radio/8010/rr192' },
 
     // Tara Brach — RAIN meditations. Finite guided recordings, not live streams: they play
     // through and stop rather than loop or buffer indefinitely.
@@ -684,6 +681,12 @@
   const SHUFFLE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>';
 
   let currentIndex = null;
+  let userWantsPlaying = false; // tracks intent, separate from audio.paused —
+                                  // lets us tell "you tapped pause" apart from
+                                  // "something interrupted it" so we know when to auto-retry
+  let reconnectAttempts = 0;
+  let reconnectTimer = null;
+  const MAX_RECONNECT_ATTEMPTS = 6;
   let activeNetwork = networks[0].id;
   let npTimer = null;
   let npRequestId = 0;
@@ -776,11 +779,32 @@
 
   function playCurrent(){
     if(currentIndex === null) return;
+    userWantsPlaying = true;
+    reconnectAttempts = 0;
     const s = stations[currentIndex];
     if(audio.src !== s.url){ audio.src = s.url; }
     statusEl.textContent = 'Connecting…';
     audio.play().catch(() => {
       statusEl.textContent = "Couldn't connect — try another preset";
+    });
+  }
+
+  function attemptReconnect(){
+    if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
+    if(!userWantsPlaying || currentIndex === null) return;
+    if(reconnectAttempts >= MAX_RECONNECT_ATTEMPTS){
+      statusEl.textContent = "Connection lost — tap play to retry";
+      return;
+    }
+    reconnectAttempts++;
+    statusEl.textContent = 'Reconnecting…';
+    const s = stations[currentIndex];
+    // Force a genuinely fresh connection — a dropped live stream can't just "resume,"
+    // it has to reconnect at the current live edge, so we bust any stale cached request.
+    const sep = s.url.includes('?') ? '&' : '?';
+    audio.src = s.url + sep + '_r=' + Date.now();
+    audio.play().catch(() => {
+      reconnectTimer = setTimeout(attemptReconnect, 2500);
     });
   }
 
@@ -989,6 +1013,8 @@
     statusEl.textContent = '';
     updatePlayIcon(true);
     liveIndicator.classList.add('on');
+    reconnectAttempts = 0;
+    if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
     if(currentIndex !== null){
       const s = stations[currentIndex];
       if('mediaSession' in navigator){
@@ -1003,12 +1029,23 @@
 
   audio.addEventListener('waiting', () => { statusEl.textContent = 'Buffering…'; });
 
+  audio.addEventListener('stalled', () => {
+    if(userWantsPlaying && !reconnectTimer){
+      statusEl.textContent = 'Buffering…';
+      reconnectTimer = setTimeout(attemptReconnect, 5000);
+    }
+  });
+
   audio.addEventListener('error', () => {
-    statusEl.textContent = "Couldn't connect — try another preset";
     updatePlayIcon(false);
     liveIndicator.classList.remove('on');
     stopNowPlayingPolling();
     hideTrackCard();
+    if(userWantsPlaying){
+      attemptReconnect();
+    } else {
+      statusEl.textContent = "Couldn't connect — try another preset";
+    }
   });
 
   audio.addEventListener('pause', () => {
@@ -1016,12 +1053,30 @@
     liveIndicator.classList.remove('on');
     if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     stopNowPlayingPolling();
+    // A pause we didn't ask for (a call, an alarm, another app's audio) — try to pick
+    // back up once whatever caused it has passed.
+    if(userWantsPlaying && !reconnectTimer){
+      reconnectTimer = setTimeout(attemptReconnect, 1500);
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible' && userWantsPlaying && audio.paused){
+      attemptReconnect();
+    }
   });
 
   playBtn.addEventListener('click', () => {
     if(currentIndex === null) return;
-    if(audio.paused){ audio.play().catch(() => {}); }
-    else { audio.pause(); }
+    if(audio.paused){
+      userWantsPlaying = true;
+      reconnectAttempts = 0;
+      audio.play().catch(() => {});
+    } else {
+      userWantsPlaying = false;
+      if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
+      audio.pause();
+    }
   });
 
   prevBtn.addEventListener('click', () => stepStation(-1));
@@ -1029,8 +1084,16 @@
   shuffleBtn.addEventListener('click', shuffleChannel);
 
   if('mediaSession' in navigator){
-    navigator.mediaSession.setActionHandler('play', () => audio.play().catch(() => {}));
-    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+    navigator.mediaSession.setActionHandler('play', () => {
+      userWantsPlaying = true;
+      reconnectAttempts = 0;
+      audio.play().catch(() => {});
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      userWantsPlaying = false;
+      if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
+      audio.pause();
+    });
     navigator.mediaSession.setActionHandler('previoustrack', () => stepStation(-1));
     navigator.mediaSession.setActionHandler('nexttrack', () => stepStation(1));
   }
