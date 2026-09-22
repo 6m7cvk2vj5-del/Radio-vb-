@@ -503,7 +503,7 @@
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Thirteen networks, 79 channels total</p>
+        <p id="stationSub">Thirteen networks, 77 channels total</p>
 
         <div class="trackCard" id="trackCard">
           <div class="artwork" id="artwork">
@@ -561,6 +561,29 @@
   ];
 
   // `now` describes how to fetch now-playing metadata for a channel. Omitted = no metadata attempted.
+  // Rotating pools — verified against Internet Archive's own duration metadata (titles
+  // aren't always accurate; several other candidates were dropped after checking: one claimed
+  // 8 hours and was actually ~1h49m elsewhere, another required a login and was unusable, a
+  // "MassageASMR" bowls item turned out to be video-only with no mp3 files, and a y2mate bowls
+  // upload was the same underlying recording as the Third Eye/Brow Chakra track already below.
+  const pools = {
+    bowls: [
+      { name: '3-Hour Singing Bowl — Third Eye/Brow Chakra', url: 'https://archive.org/download/3HOURSLongTibetanSingingBowlMeditationChakraHealingThirdEyeBrowChakra/3 HOURS Long Tibetan Singing Bowl Meditation Chakra Healing   Third Eye   Brow Chakra.mp3' },
+      { name: '8-Hour Singing Bowl & Gong (Marco May, CC-licensed)', url: 'https://archive.org/download/8HoursTibetanSingingBowlAndGongMeditation/8 Hours Tibetan Singing Bowl and Gong Meditation.mp3' },
+      { name: '9-Hour Singing Bowls — Natural Sounds Gold', url: 'https://archive.org/download/9hourstibetanhealingsoundssingingbowlsnaturalsoundsgoldformeditationrelaxation/9 HOURS Tibetan Healing Sounds - Singing Bowls - Natural sounds Gold for Meditation & Relaxation.mp3' },
+    ],
+    nature: [
+      { name: 'Forest Birdsong — Bluebell Woodland (1h49m)', url: 'https://archive.org/download/7.-forest-birdsong-nature-sounds-bluebell-woodland-8-hour-version/7.Forest Birdsong Nature Sounds - Bluebell Woodland - 8 Hour Version.mp3' },
+      { name: 'Birdsong — 3 Hours', url: 'https://archive.org/download/forest-2/Forest 2.mp3' },
+      { name: 'Forest Birdsong — No-Loop Realtime (2h)', url: 'https://archive.org/download/nature-sounds_202104/%5BMP3FY%5D 4K Forest Birdsong 2 - Birds Sing in the Woods - No Loop Realtime Birdsong - Relaxing Nature Video.mp3' },
+    ],
+  };
+
+  function pickPoolTrack(poolName){
+    const list = pools[poolName];
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
   const stations = [
     // FIP — pull IDs confirmed for 9 of 12 webradios; Pop/Hip-Hop/Sacré Français have no documented ID
     { network:'fip', name:'FIP',                 genre:'Eclectic mix',       url:'https://icecast.radiofrance.fr/fip-midfi.mp3?id=radiofrance', now:{type:'fip', id:7} },
@@ -641,13 +664,8 @@
     { network:'yoga', name:'Moss Garden', genre:'Ambient · field recordings', url:'https://radio.moss.garden/listen/moss_garden/radio.mp3' },
     { network:'yoga', name:'Ambinature Radio', genre:'Pure nature sounds', url:'https://nature-rex.radioca.st/stream' },
 
-    // David Kamp — Congo field recordings, hosted on a proper CDN (unlike his radio.studiokamp.com
-    // stream, which lacks a valid certificate). Finite single takes, not endless streams — they'll
-    // play through and stop, same as the Meditate/DBT/SLAA tracks.
-    { network:'yoga', name:'Congo: Morning Birdsong', genre:'Field recording · dawn chorus', url:'https://w3q4u7z4.delivery.rocketcdn.me/wp-content/uploads/2018/08/4_DAVIDKAMP_Habitat_MIXp-029_excerpt_Habitat_Morning-NEW4.mp3' },
-    { network:'yoga', name:'Congo: First Night',    genre:'Field recording · insects',     url:'https://w3q4u7z4.delivery.rocketcdn.me/wp-content/uploads/2018/08/first-night.mp3' },
-    { network:'yoga', name:'Congo: Frog Chorus',    genre:'Field recording · frogs',       url:'https://w3q4u7z4.delivery.rocketcdn.me/wp-content/uploads/2017/12/3_DAVIDKAMP_Congo_Frogs.mp3' },
-    { network:'yoga', name:'Congo: Elephants at Night', genre:'Field recording · elephants', url:'https://w3q4u7z4.delivery.rocketcdn.me/wp-content/uploads/2018/08/2_DAVIDKAMP_Elephants_Night_Meeting.mp3' },
+    { network:'yoga', name:'Singing Bowls (Random)', genre:'Rotates between 2 verified tracks', pool:'bowls' },
+    { network:'yoga', name:'Forest Sounds (Random)', genre:'Rotates between 2 verified tracks', pool:'nature' },
 
     // Tara Brach — RAIN meditations. Finite guided recordings, not live streams: they play
     // through and stop rather than loop or buffer indefinitely.
@@ -694,6 +712,8 @@
   let reconnectAttempts = 0;
   let reconnectTimer = null;
   const MAX_RECONNECT_ATTEMPTS = 6;
+  let fading = false;
+  const FADE_SECONDS = 2.5;
   let activeNetwork = networks[0].id;
   let npTimer = null;
   let npRequestId = 0;
@@ -788,8 +808,16 @@
     if(currentIndex === null) return;
     userWantsPlaying = true;
     reconnectAttempts = 0;
+    fading = false;
+    audio.volume = 1;
     const s = stations[currentIndex];
-    if(audio.src !== s.url){ audio.src = s.url; }
+    let playUrl = s.url;
+    if(s.pool){
+      const track = pickPoolTrack(s.pool);
+      playUrl = track.url;
+      stationSub.textContent = networkLabel(s.network) + ' · Now: ' + track.name;
+    }
+    if(audio.src !== playUrl){ audio.src = playUrl; }
     statusEl.textContent = 'Connecting…';
     audio.play().catch(() => {
       statusEl.textContent = "Couldn't connect — try another preset";
@@ -814,6 +842,43 @@
       reconnectTimer = setTimeout(attemptReconnect, 2500);
     });
   }
+
+  function fadeVolumeTo(target, seconds, onComplete){
+    const start = audio.volume;
+    const startTime = performance.now();
+    function step(now){
+      const t = Math.min(1, (now - startTime) / (seconds * 1000));
+      audio.volume = start + (target - start) * t;
+      if(t < 1){ requestAnimationFrame(step); }
+      else if(onComplete){ onComplete(); }
+    }
+    requestAnimationFrame(step);
+  }
+
+  // For short finite clips flagged `loop: true` — fades out near the end, jumps back
+  // to the start, and fades back in, instead of either an abrupt hard cut or just stopping.
+  audio.addEventListener('timeupdate', () => {
+    if(currentIndex === null || fading) return;
+    const s = stations[currentIndex];
+    if(!s || (!s.loop && !s.pool)) return;
+    if(!isFinite(audio.duration) || audio.duration <= 0) return;
+    const remaining = audio.duration - audio.currentTime;
+    if(remaining <= FADE_SECONDS && remaining > 0){
+      fading = true;
+      fadeVolumeTo(0, remaining, () => {
+        if(s.pool){
+          const track = pickPoolTrack(s.pool);
+          audio.src = track.url;
+          stationSub.textContent = networkLabel(s.network) + ' · Now: ' + track.name;
+        } else {
+          audio.currentTime = 0;
+        }
+        audio.volume = 0;
+        audio.play().catch(() => {});
+        fadeVolumeTo(1, FADE_SECONDS, () => { fading = false; });
+      });
+    }
+  });
 
   function stepStation(delta){
     const filtered = currentGroup();
@@ -1060,6 +1125,12 @@
     liveIndicator.classList.remove('on');
     if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     stopNowPlayingPolling();
+    if(audio.ended){
+      // Finished on its own — a finite track reaching its end, not an interruption.
+      // Loop-flagged tracks restart themselves earlier via the timeupdate fade above;
+      // anything else (talks, meditations) should just stop here, not restart.
+      return;
+    }
     // A pause we didn't ask for (a call, an alarm, another app's audio) — try to pick
     // back up once whatever caused it has passed.
     if(userWantsPlaying && !reconnectTimer){
