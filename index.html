@@ -1456,17 +1456,12 @@
       clearRecoveryTimers();
       return;
     }
-    // A pause we didn't ask for (a call, an alarm, another app's audio) — try to pick
-    // back up once whatever caused it has passed.
-    if(userWantsPlaying && !reconnectTimer){
-      reconnectTimer = setTimeout(attemptReconnect, 1500);
-    }
-  });
-
-  document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState === 'visible' && userWantsPlaying && audio.paused){
-      attemptReconnect();
-    }
+    // A bare 'pause' with no other signal is ambiguous — a phone call and a Bluetooth
+    // disconnect both look identical from here. Auto-resuming used to assume "a call
+    // interrupted you," but that's exactly wrong for a disconnect: it meant taking off
+    // Bluetooth headphones made the phone suddenly start playing out loud through the
+    // speaker. No mainstream audio app auto-resumes through a new/changed route, so this
+    // no longer tries to — a clean pause, whatever caused it, just waits for a tap on play.
   });
 
   playBtn.addEventListener('click', () => {
