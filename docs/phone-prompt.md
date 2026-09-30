@@ -20,8 +20,7 @@ I also edit this app from my computer, so my notes or memory of the file may be 
 - If you can write to GitHub (connector with write access): commit only the changed file(s) directly to `main`, with a message that starts with `phone: ` (for example `phone: remove KEXP`). Before committing, re-read the file's current version so you don't overwrite a newer push, then tell me what you committed.
 - If you can't write to GitHub: give me each change as an exact find-and-replace (the old lines and the new lines), or the complete new station line(s). I'll apply them. Don't paste the whole 70 KB file unless I ask.
 - You can't run code here, so check your own work by reading: balanced quotes and commas in the `stations` array, and no stray characters in the `<script>`.
-- When the number of stations changes, update the hardcoded subtitle (`<p id="stationSub">Thirteen networks, NN channels total</p>`) to match. NN is the number of station entries (`{ network:`), currently 77. If the number of networks changes, update the spelled-out word ("Thirteen") too.
-- When I ask you to remove something, remove it and update the count.
+- When I ask you to remove something, just remove it. The app no longer shows a station count, so there is nothing to update.
 
 ## Hard rules (each learned from a real failure)
 

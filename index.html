@@ -219,6 +219,9 @@
   }
   .now-playing h1{
     margin: 0 0 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-size: calc(26px * var(--font-scale));
     font-weight: 700;
     letter-spacing: -0.01em;
@@ -226,11 +229,16 @@
   }
   .now-playing p{
     margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-family: 'IBM Plex Mono', monospace;
     font-size: calc(13px * var(--font-scale));
     color: var(--text-dim);
     letter-spacing: 0.02em;
   }
+
+  #stationSub{ min-height: 1.4em; }
 
   .trackCard{
     display: none;
@@ -474,8 +482,8 @@
     font-family: 'IBM Plex Mono', monospace;
     font-size: calc(11px * var(--font-scale));
     color: var(--text-dim);
-    opacity: .7;
-    margin: 2px 0 0;
+    margin: 0;
+    text-align: right;
   }
   .resetUsage{
     appearance: none;
@@ -603,13 +611,18 @@
           </div>
         </div>
         <p class="settingsNote">Drops Radio Paradise &amp; SomaFM to ~32 kbps (about a sixth of the data). Other networks stream at one fixed quality and aren't affected yet.</p>
+        <div class="settingsRow">
+          <span class="settingsLabel">Data usage</span>
+          <p class="dataUsage" id="dataUsage"><span id="dataUsageText"></span><button class="resetUsage" id="resetUsageBtn" type="button">reset</button></p>
+        </div>
+        <p class="settingsNote">An estimate from stream bitrate × listening time, not a measured figure.</p>
       </div>
     </div>
 
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
-        <p id="stationSub">Thirteen networks, 77 channels total</p>
+        <p id="stationSub"></p>
 
         <div class="trackCard" id="trackCard">
           <div class="artwork" id="artwork">
@@ -652,7 +665,6 @@
           <button class="skipBtn" id="nextBtn" disabled aria-label="Next channel"></button>
         </div>
         <p class="status" id="status"></p>
-        <p class="dataUsage" id="dataUsage"><span id="dataUsageText"></span><button class="resetUsage" id="resetUsageBtn" type="button">reset</button></p>
       </div>
     </main>
 
