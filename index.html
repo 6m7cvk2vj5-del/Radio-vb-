@@ -50,8 +50,9 @@
   }
 
   .app{
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     padding-top: env(safe-area-inset-top);
@@ -511,6 +512,10 @@
     margin: 0;
     padding: 6px 8px 40px;
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
   .presetRow{
     display: flex;
