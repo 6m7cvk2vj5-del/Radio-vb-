@@ -875,6 +875,23 @@
   const HLS_STALLED_MS = 15000;
   function isHls(url){ return /\.m3u8(\?|$)/i.test(url || ''); }
 
+  // Safari fires 'stalled' on perfectly healthy live streams (it just means the browser paused
+  // downloading because its buffer is full), and 'waiting' can precede a recovery that never
+  // re-fires 'playing'. So before restarting a stream on a timer, check whether audio is
+  // actually advancing — only a genuinely frozen stream should be torn down and reconnected.
+  function scheduleRecovery(ms, onHealthy){
+    const t0 = audio.currentTime;
+    return setTimeout(() => {
+      const advancing = !audio.paused && audio.currentTime > t0 + 0.5 && audio.readyState >= 3;
+      if(advancing){
+        reconnectTimer = null; waitingTimer = null;
+        if(statusEl.textContent === 'Buffering…') statusEl.textContent = '';
+        return;
+      }
+      onHealthy();
+    }, ms);
+  }
+
   function clearRecoveryTimers(){
     if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
     if(waitingTimer){ clearTimeout(waitingTimer); waitingTimer = null; }
@@ -1448,14 +1465,15 @@
     // treat it like a stall and force a fresh connection rather than waiting forever.
     if(userWantsPlaying && !waitingTimer && !reconnectTimer){
       const wait = isHls(currentPlayUrl) ? HLS_STUCK_BUFFERING_MS : STUCK_BUFFERING_MS;
-      waitingTimer = setTimeout(() => { waitingTimer = null; attemptReconnect(); }, wait);
+      waitingTimer = scheduleRecovery(wait, () => { waitingTimer = null; attemptReconnect(); });
     }
   });
 
   audio.addEventListener('stalled', () => {
     if(userWantsPlaying && !reconnectTimer){
-      statusEl.textContent = 'Buffering…';
-      reconnectTimer = setTimeout(attemptReconnect, isHls(currentPlayUrl) ? HLS_STALLED_MS : 5000);
+      // Only claim "Buffering…" if there genuinely isn't enough data to keep playing.
+      if(audio.paused || audio.readyState < 3) statusEl.textContent = 'Buffering…';
+      reconnectTimer = scheduleRecovery(isHls(currentPlayUrl) ? HLS_STALLED_MS : 5000, attemptReconnect);
     }
   });
 
