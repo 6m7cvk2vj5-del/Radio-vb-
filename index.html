@@ -868,6 +868,12 @@
   let currentPlayUrl = null; // the exact URL actually loaded — needed for pool stations, which have no s.url
   const MAX_RECONNECT_ATTEMPTS = 6;
   const STUCK_BUFFERING_MS = 8000;
+  // HLS (.m3u8) streams in Safari do their own segment fetching and rebuffering, and on
+  // cellular the first segments can take a while — restarting at 8s just throws away
+  // progress and starts the slow part over, so give them much longer before intervening.
+  const HLS_STUCK_BUFFERING_MS = 20000;
+  const HLS_STALLED_MS = 15000;
+  function isHls(url){ return /\.m3u8(\?|$)/i.test(url || ''); }
 
   function clearRecoveryTimers(){
     if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
@@ -1155,13 +1161,16 @@
     // Uses currentPlayUrl rather than s.url: pool-based stations (Singing Bowls, Forest
     // Sounds) have no url on the station object itself, only on the picked pool track.
     const base = currentPlayUrl || stations[currentIndex].url;
+    const hls = isHls(base);
     const sep = base.includes('?') ? '&' : '?';
     // But a finite on-demand file (a talk, a meditation) very much has a "where you were" —
     // unlike a live stream, restarting it from 0:00 on every hiccup is a bug, not a feature.
     // Bug found live: a long archive.org-hosted SLAA talk kept jumping back to the start —
     // that was this function resetting position on every minor stall it recovered from.
     const resumeAt = (isFinite(audio.duration) && audio.duration > 0) ? audio.currentTime : null;
-    audio.src = base + sep + '_r=' + Date.now();
+    // HLS playlists are already live-edge by nature, and a changing query string just makes
+    // each retry a CDN cache miss, so reload the plain URL.
+    audio.src = hls ? base : base + sep + '_r=' + Date.now();
     if(resumeAt !== null){
       const resumeOnce = () => {
         audio.currentTime = resumeAt;
@@ -1438,14 +1447,15 @@
     // indefinitely. If we haven't recovered to 'playing' within STUCK_BUFFERING_MS,
     // treat it like a stall and force a fresh connection rather than waiting forever.
     if(userWantsPlaying && !waitingTimer && !reconnectTimer){
-      waitingTimer = setTimeout(() => { waitingTimer = null; attemptReconnect(); }, STUCK_BUFFERING_MS);
+      const wait = isHls(currentPlayUrl) ? HLS_STUCK_BUFFERING_MS : STUCK_BUFFERING_MS;
+      waitingTimer = setTimeout(() => { waitingTimer = null; attemptReconnect(); }, wait);
     }
   });
 
   audio.addEventListener('stalled', () => {
     if(userWantsPlaying && !reconnectTimer){
       statusEl.textContent = 'Buffering…';
-      reconnectTimer = setTimeout(attemptReconnect, 5000);
+      reconnectTimer = setTimeout(attemptReconnect, isHls(currentPlayUrl) ? HLS_STALLED_MS : 5000);
     }
   });
 
