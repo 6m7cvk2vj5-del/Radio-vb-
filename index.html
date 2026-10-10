@@ -690,7 +690,6 @@
     { id: 'bbc',  label: 'BBC',            place: 'London' },
     { id: 'classical', label: 'Classical', place: 'Various' },
     { id: 'meditate', label: 'Meditate', place: 'Tara Brach' },
-    { id: 'dbt', label: 'DBT', place: 'Various' },
     { id: 'slaa', label: 'SLAA Talks', place: 'Puget Sound' },
     { id: 'yoga', label: 'Yoga', place: 'Various' },
   ];
@@ -730,7 +729,7 @@
   // measured — the estimate is a guide for data-plan awareness, not a guarantee.
   const NETWORK_DEFAULT_KBPS = {
     fip: 128, rp: 192, soma: 128, nts: 128, club: 128, piano: 128,
-    cbc: 128, bbc: 96, classical: 128, yoga: 128, meditate: 96, dbt: 96, slaa: 96,
+    cbc: 128, bbc: 96, classical: 128, yoga: 128, meditate: 96, slaa: 96,
   };
 
   const stations = [
@@ -829,13 +828,14 @@
     { network:'meditate', name:'RAIN of Compassion',       genre:'9 min · short practice',        url:'https://traffic.libsyn.com/secure/tarabrach/2021-11-14-Meditation-RAIN-of-Compassion-TaraBrach.mp3' },
     { network:'meditate', name:'Realizing Your Deepest Intention', genre:'51 min · talk',         url:'https://traffic.libsyn.com/secure/tarabrach/2023-01-04-Realizing-Your-Deepest-Intention-2019-01-16-TaraBrach.mp3' },
     { network:'meditate', name:'Healing Addiction: Hungry Ghosts', genre:'53 min · talk',         url:'https://traffic.libsyn.com/tarabrach/2017-03-29-Healing-Addiction-TaraBrach.mp3' },
-    { network:'meditate', name:'Healing Codependency',     genre:'Self-focus, not outsourcing',   url:'https://sharonmartincounseling.com/wp-content/uploads/2017/09/Codependency-guided-meditation.m4a' },
+    { network:'meditate', name:'Mountain Meditation (Palouse)', genre:'~20 min · Kabat-Zinn adaptation', url:'https://palousemindfulness.com/disks/mountain.mp3' },
+    { network:'meditate', name:'Mountain Meditation (UW)', genre:'Female narrator · length unknown', url:'https://depts.washington.edu/abrc/mbrp/recordings/Mountain%20meditation.mp3' },
 
-    // DBT (Dialectical Behavior Therapy) mindfulness practices — finite guided recordings
-    { network:'dbt', name:'Wise Mind Practice',      genre:'10 min · guided practice',      url:'https://storage.googleapis.com/dialecticalbehaviorthera-videos/videos/mindfulness__wise-mind.1080.mp4' },
-    { network:'dbt', name:'DBT Body Scan',          genre:'Body mindfulness',              url:'https://columbustherapyandhypnosis.com/wp-content/uploads/2025/11/Mental-Body-Scan-Female-English.mp3' },
-    { network:'dbt', name:'Breath and Body',        genre:'20 min · breath + body',        url:'https://www.mindfulnessinaction.ca/wp-content/uploads/2022/12/Awareness-of-breath-and-body-20-minutes.mp3' },
-    { network:'dbt', name:'Awareness of Breathing', genre:'14 min · breath only',          url:'https://www.mindfulnessinaction.ca/wp-content/uploads/2022/12/Awareness-of-breathing-14-minutes-1.mp3' },
+    // DBT (Dialectical Behavior Therapy) mindfulness practices — finite guided recordings, listed on the Meditate tab
+    { network:'meditate', name:'Wise Mind Practice',      genre:'10 min · guided practice',      url:'https://storage.googleapis.com/dialecticalbehaviorthera-videos/videos/mindfulness__wise-mind.1080.mp4' },
+    { network:'meditate', name:'DBT Body Scan',          genre:'Body mindfulness',              url:'https://columbustherapyandhypnosis.com/wp-content/uploads/2025/11/Mental-Body-Scan-Female-English.mp3' },
+    { network:'meditate', name:'Breath and Body',        genre:'20 min · breath + body',        url:'https://www.mindfulnessinaction.ca/wp-content/uploads/2022/12/Awareness-of-breath-and-body-20-minutes.mp3' },
+    { network:'meditate', name:'Awareness of Breathing', genre:'14 min · breath only',          url:'https://www.mindfulnessinaction.ca/wp-content/uploads/2022/12/Awareness-of-breathing-14-minutes-1.mp3' },
 
     // SLAA Seattle Healing Hearts Retreat archives — finite recorded talks, re-hosted on
     // archive.org (their direct downloads work cleanly; Google Drive's did not, due to its
