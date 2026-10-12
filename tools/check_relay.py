@@ -10,7 +10,7 @@ Reads the station list from the published Dial page (or a local index.html), ask
 Uses only the Python standard library. Finite files (talks, meditations) and HLS streams are
 skipped, since they carry no embedded titles.
 """
-import argparse, json, re, sys, urllib.parse, urllib.request
+import argparse, json, re, ssl, subprocess, sys, urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 DEFAULT_PAGE = 'https://6m7cvk2vj5-del.github.io/Radio-vb-/'
@@ -19,11 +19,34 @@ LINE = re.compile(r"\{\s*network:\s*'(\w+)',\s*name:\s*(?:'([^']*)'|\"([^\"]*)\"
 URL = re.compile(r"\b(url|lowUrl):\s*(?:'([^']+)'|\"([^\"]+)\")")
 
 
+USE_CURL = False
+
+
+def fetch_text(url, timeout=20):
+    """GET a URL and return the body. Verifies certificates. If Python can't (python.org builds
+    on macOS often ship without root certificates), retries once with the system `curl`."""
+    global USE_CURL
+    if not USE_CURL:
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'dial-relay-check'})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read().decode('utf-8')
+        except urllib.error.URLError as e:
+            if not isinstance(e.reason, ssl.SSLCertVerificationError):
+                raise
+            USE_CURL = True
+            print('(Python has no root certificates here; using the system curl instead)', file=sys.stderr)
+    out = subprocess.run(['curl', '-sS', '-f', '-L', '--max-time', str(timeout), '-A', 'dial-relay-check', url],
+                         capture_output=True, text=True)
+    if out.returncode != 0:
+        raise RuntimeError('curl failed (%s): %s' % (out.returncode, out.stderr.strip()))
+    return out.stdout
+
+
 def load_html(args):
     if args.file:
         return open(args.file, encoding='utf-8').read()
-    req = urllib.request.Request(args.page, headers={'User-Agent': 'dial-relay-check'})
-    return urllib.request.urlopen(req, timeout=20).read().decode('utf-8')
+    return fetch_text(args.page)
 
 
 def parse_stations(html):
@@ -42,10 +65,8 @@ def parse_stations(html):
 
 def ask(relay, url, timeout=20):
     q = relay.rstrip('/') + '/icy?debug=1&u=' + urllib.parse.quote(url, safe='')
-    req = urllib.request.Request(q, headers={'User-Agent': 'dial-relay-check'})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read().decode('utf-8'))
+        return json.loads(fetch_text(q, timeout))
     except Exception as e:                       # network / HTTP / bad JSON
         return {'error': str(e)}
 
@@ -72,7 +93,10 @@ def main():
     ap.add_argument('--only', help='comma-separated network ids to test, e.g. soma,club')
     ap.add_argument('--workers', type=int, default=6)
     ap.add_argument('--verbose', action='store_true', help='also print the station response headers for every failure')
+    ap.add_argument('--curl', action='store_true', help='always use the system curl for network requests')
     args = ap.parse_args()
+    global USE_CURL
+    USE_CURL = args.curl
 
     stations = [s for s in parse_stations(load_html(args))
                 if s['network'] not in SKIP_NETWORKS
