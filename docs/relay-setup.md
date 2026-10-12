@@ -43,3 +43,10 @@ page ever moves to a new address, or you want another JSON source, those are wha
 - HLS streams (BBC, CBC, RTHK) have no embedded titles. BBC already has its own lookup.
 - Non-standard ports (Soho Radio :8010, Blue Marlin :8001) may or may not be reachable from
   Cloudflare; check them on the phone.
+
+## Troubleshooting a station that shows nothing
+
+Add `&debug=1` to the test address to see what the station actually sends the relay, e.g.
+`https://dial-relay.<your-name>.workers.dev/icy?debug=1&u=https://ice1.somafm.com/groovesalad-128-mp3`
+The reply includes the upstream status, the stream's `icy-metaint` header (present only if the
+station sends titles), the length of each metadata block, and a `stoppedBecause` reason.

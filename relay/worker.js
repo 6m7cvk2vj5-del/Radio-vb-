@@ -98,9 +98,20 @@ function splitTitle(raw) {
 
 // Reads ICY metadata from an already-opened stream response. Returns {raw, artist, title}
 // or null if the stream has none. Exported shape kept simple so it can be unit-tested.
-async function readIcyFromResponse(res) {
+async function readIcyFromResponse(res, trace) {
   const metaint = parseInt(res.headers.get('icy-metaint'), 10);
-  if (!res.ok || !metaint || metaint > MAX_METAINT || !res.body) return null;
+  if (trace) {
+    trace.status = res.status;
+    trace.finalUrl = res.url || null;
+    trace.metaint = metaint || null;
+    trace.headers = {};
+    res.headers.forEach((v, k) => { if (/^(content-type|server|icy-.*|ice-.*|x-.*|location|content-encoding)$/i.test(k)) trace.headers[k] = v; });
+    trace.blocks = [];
+  }
+  if (!res.ok || !metaint || metaint > MAX_METAINT || !res.body) {
+    if (trace) trace.stoppedBecause = !res.ok ? 'upstream status not OK' : (!metaint ? 'no icy-metaint header (server sent no metadata)' : (metaint > MAX_METAINT ? 'metaint too large' : 'no body'));
+    return null;
+  }
   const reader = res.body.getReader();
   let buf = new Uint8Array(0);
   let done = false;
@@ -115,25 +126,28 @@ async function readIcyFromResponse(res) {
   try {
     let pos = 0;
     for (let block = 0; block < MAX_BLOCKS; block++) {
-      if (!(await ensure(pos + metaint + 1))) return null;
+      if (!(await ensure(pos + metaint + 1))) { if (trace) trace.stoppedBecause = 'stream ended early'; return null; }
       const len = buf[pos + metaint] * 16;
+      if (trace) trace.blocks.push(len);
       const start = pos + metaint + 1;
       if (len > 0) {
         if (!(await ensure(start + len))) return null;
         const text = new TextDecoder('utf-8').decode(buf.slice(start, start + len)).replace(/\0+$/, '');
+        if (trace) trace.metadataText = text;
         const m = text.match(/StreamTitle='([\s\S]*?)';/) || text.match(/StreamTitle='([\s\S]*)$/);
         const raw = m ? m[1].trim() : '';
         return raw ? splitTitle(raw) : null;
       }
       pos = start; // empty block: "unchanged" — look at the next interval
     }
+    if (trace) trace.stoppedBecause = 'no title in the first ' + MAX_BLOCKS + ' metadata blocks';
     return null;
   } finally {
     try { await reader.cancel(); } catch (e) {}
   }
 }
 
-async function readIcy(url) {
+async function readIcy(url, trace) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
@@ -142,7 +156,10 @@ async function readIcy(url) {
       signal: ctrl.signal,
       redirect: 'follow',
     });
-    return await readIcyFromResponse(res);
+    return await readIcyFromResponse(res, trace);
+  } catch (e) {
+    if (trace) trace.error = String(e && e.message || e);
+    throw e;
   } finally {
     clearTimeout(timer);
     ctrl.abort(); // drop the audio stream as soon as we have what we need
@@ -186,6 +203,12 @@ export default {
     try {
       if (url.pathname === '/icy') {
         if (!(await allowedStreamHosts()).has(target.host)) return reply({ error: 'host not allowed' }, 403);
+        if (url.searchParams.get('debug') === '1') {
+          const trace = {};
+          let info = null;
+          try { info = await readIcy(target.toString(), trace); } catch (e) {}
+          return reply({ result: info, trace }, 200, { 'Cache-Control': 'no-store' });
+        }
         const info = await readIcy(target.toString());
         return reply(info || { raw: null, artist: null, title: null }, 200);
       }
