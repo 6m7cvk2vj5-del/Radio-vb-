@@ -301,17 +301,6 @@
     margin: 0 0 6px !important;
     min-height: 1.3em;
   }
-  .spotifyLink, .youtubeLink{
-    display: none;
-    align-items: center;
-    gap: 5px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: calc(11px * var(--font-scale));
-    letter-spacing: 0.03em;
-    color: var(--amber);
-    text-decoration: none;
-  }
-  .spotifyLink svg, .youtubeLink svg{ width: 12px; height: 12px; }
   .trackActions{
     min-height: calc(18px * var(--font-scale));
     display: flex;
@@ -319,7 +308,7 @@
     flex-wrap: wrap;
     gap: 4px 14px;
   }
-  .shareBtn{
+  .shareBtn, .searchBtn{
     display: none;
     appearance: none;
     background: none;
@@ -333,7 +322,28 @@
     letter-spacing: 0.03em;
     color: var(--amber);
   }
-  .shareBtn svg{ width: 12px; height: 12px; }
+  .shareBtn svg, .searchBtn svg{ width: 12px; height: 12px; }
+  .searchOptions{ list-style: none; margin: 0; padding: 0; }
+  .searchOptions a{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--hairline);
+    font-size: calc(14px * var(--font-scale));
+    color: var(--text);
+    text-decoration: none;
+  }
+  .searchOptions li:last-child a{ border-bottom: none; }
+  .searchOptions a::after{ content: '\2197'; color: var(--text-dim); }
+  .searchSong{
+    margin: -8px 0 6px;
+    font-size: calc(12px * var(--font-scale));
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   .tabsWrap{
     overflow-x: auto;
@@ -655,6 +665,17 @@
       </div>
     </div>
 
+    <div class="settingsOverlay" id="searchOverlay">
+      <div class="settingsPanel" role="dialog" aria-labelledby="searchTitle">
+        <div class="settingsHeader">
+          <span id="searchTitle">Search with&hellip;</span>
+          <button class="settingsClose" id="searchClose" aria-label="Close">✕</button>
+        </div>
+        <p class="searchSong" id="searchSong"></p>
+        <ul class="searchOptions" id="searchOptions"></ul>
+      </div>
+    </div>
+
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
@@ -670,14 +691,10 @@
               <p class="trackTitle" id="trackTitle">Nothing playing</p>
               <p class="trackArtist" id="trackArtist"></p>
               <div class="trackActions">
-                <a class="spotifyLink" id="spotifyLink" href="#" target="_blank" rel="noopener">
-                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.4.1-.7-.1-.8-.5-.1-.4.1-.7.5-.8 4-.9 7.5-.5 10.3 1.2.3.2.4.6.2.9zm1.2-2.7c-.2.3-.7.5-1 .3-2.9-1.8-7.3-2.3-10.7-1.3-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.9-1.2 8.7-.6 12 1.5.4.2.5.7.2 1zm.1-2.8C14.3 8.8 8.9 8.6 5.7 9.6c-.5.1-1-.2-1.1-.6-.1-.5.2-1 .6-1.1 3.7-1.1 9.7-.9 13.5 1.4.4.3.6.9.3 1.3-.3.4-.9.5-1.3.3z"></path></svg>
-                  Search on Spotify
-                </a>
-                <a class="youtubeLink" id="youtubeLink" href="#" target="_blank" rel="noopener">
-                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15V9l5.2 3L10 15z"></path></svg>
-                  Search on YouTube
-                </a>
+                <button class="searchBtn" id="searchBtn" type="button" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+                  Search with&hellip;
+                </button>
                 <button class="shareBtn" id="shareBtn" type="button" aria-label="Share this song">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path><path d="M16 6l-4-4-4 4"></path><path d="M12 2v13"></path></svg>
                   <span id="shareLabel">Share</span>
@@ -1076,8 +1093,7 @@
   const trackTitleEl = document.getElementById('trackTitle');
   const trackArtistEl = document.getElementById('trackArtist');
   const artworkImg = document.getElementById('artworkImg');
-  const spotifyLink = document.getElementById('spotifyLink');
-  const youtubeLink = document.getElementById('youtubeLink');
+  const searchBtn = document.getElementById('searchBtn');
   const shareBtn = document.getElementById('shareBtn');
   const shareLabel = document.getElementById('shareLabel');
 
@@ -1372,10 +1388,9 @@
     trackTitleEl.textContent = message || 'Nothing playing';
     trackArtistEl.textContent = '';
     artworkImg.style.display = 'none';
-    spotifyLink.style.display = 'none';
-    youtubeLink.style.display = 'none';
+    searchBtn.style.display = 'none';
     shareBtn.style.display = 'none';
-    shareUrl = '';
+    searchQuery = '';
   }
 
   function showTrackCard(title, artist, coverUrl, spotifyQuery){
@@ -1390,24 +1405,68 @@
       artworkImg.style.display = 'none';
     }
     if(spotifyQuery){
-      spotifyLink.href = 'https://open.spotify.com/search/' + encodeURIComponent(spotifyQuery);
-      spotifyLink.style.display = 'inline-flex';
-      youtubeLink.href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(spotifyQuery);
-      youtubeLink.style.display = 'inline-flex';
+      searchQuery = spotifyQuery;
+      searchBtn.style.display = 'inline-flex';
       shareBtn.style.display = 'inline-flex';
-      shareUrl = spotifyLink.href;
       shareText = artist ? artist + ' \u2013 ' + title : title;
     } else {
-      spotifyLink.style.display = 'none';
-      youtubeLink.style.display = 'none';
+      searchBtn.style.display = 'none';
       shareBtn.style.display = 'none';
-      shareUrl = '';
+      searchQuery = '';
     }
   }
 
-  // Share the current song as a Spotify link, so nobody has to look it up by hand. Uses the
-  // phone's share sheet when there is one, otherwise copies the text to the clipboard.
-  let shareUrl = '';
+  // "Search with..." popup: one row per service, each opening a search for the current song.
+  const SEARCH_SERVICES = [
+    { name: 'Spotify',       url: q => 'https://open.spotify.com/search/' + encodeURIComponent(q) },
+    { name: 'YouTube',       url: q => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q) },
+    { name: 'YouTube Music', url: q => 'https://music.youtube.com/search?q=' + encodeURIComponent(q) },
+    { name: 'SoundCloud',    url: q => 'https://soundcloud.com/search?q=' + encodeURIComponent(q) },
+    { name: 'Apple Music',   url: q => 'https://music.apple.com/search?term=' + encodeURIComponent(q) },
+    { name: 'Bandcamp',      url: q => 'https://bandcamp.com/search?q=' + encodeURIComponent(q) }
+  ];
+  let searchQuery = '';
+  const searchOverlay = document.getElementById('searchOverlay');
+  const searchOptions = document.getElementById('searchOptions');
+  const searchSong = document.getElementById('searchSong');
+
+  // The same picker serves both buttons: "search" opens the service's search page, "share"
+  // hands that service's link to the phone's share sheet (or copies it).
+  let searchMode = 'search';
+
+  function openPicker(mode){
+    if(!searchQuery) return;
+    searchMode = mode;
+    document.getElementById('searchTitle').textContent = mode === 'share' ? 'Share link to\u2026' : 'Search with\u2026';
+    searchSong.textContent = shareText || searchQuery;
+    searchOptions.innerHTML = '';
+    SEARCH_SERVICES.forEach(svc => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = svc.url(searchQuery);
+      a.textContent = svc.name;
+      if(mode === 'share'){
+        a.addEventListener('click', (e) => { e.preventDefault(); closeSearch(); shareLink(a.href); });
+      } else {
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.addEventListener('click', closeSearch);
+      }
+      li.appendChild(a);
+      searchOptions.appendChild(li);
+    });
+    searchOverlay.classList.add('open');
+  }
+  function closeSearch(){ searchOverlay.classList.remove('open'); }
+
+  searchBtn.addEventListener('click', () => openPicker('search'));
+  document.getElementById('searchClose').addEventListener('click', closeSearch);
+  searchOverlay.addEventListener('click', (e) => {
+    if(e.target === searchOverlay) closeSearch();
+  });
+
+  // Share the current song as a link to the chosen service, so nobody has to look it up by hand.
+  // Uses the phone's share sheet when there is one, otherwise copies the text to the clipboard.
   let shareText = '';
   let shareLabelTimer = null;
 
@@ -1417,21 +1476,22 @@
     shareLabelTimer = setTimeout(() => { shareLabel.textContent = 'Share'; }, 2000);
   }
 
-  shareBtn.addEventListener('click', async () => {
-    if(!shareUrl) return;
+  async function shareLink(url){
     if(navigator.share){
       try {
-        await navigator.share({ title: shareText, text: shareText, url: shareUrl });
+        await navigator.share({ title: shareText, text: shareText, url: url });
       } catch(e){ /* sheet dismissed */ }
       return;
     }
     try {
-      await navigator.clipboard.writeText(shareText + '\n' + shareUrl);
+      await navigator.clipboard.writeText(shareText + '\n' + url);
       flashShareLabel('Copied');
     } catch(e){
       flashShareLabel('Copy failed');
     }
-  });
+  }
+
+  shareBtn.addEventListener('click', () => openPicker('share'));
 
   async function fetchFipNow(id){
     const res = await fetch('https://api.radiofrance.fr/livemeta/pull/' + id);
