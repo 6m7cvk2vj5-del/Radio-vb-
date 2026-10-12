@@ -735,7 +735,7 @@
   const stations = [
     // FIP — pull IDs confirmed for 9 of 12 webradios; Pop/Hip-Hop/Sacré Français have no documented ID
     { network:'fip', name:'FIP',                 genre:'Eclectic mix',       url:'https://icecast.radiofrance.fr/fip-midfi.mp3?id=radiofrance', now:{type:'fip', id:7} },
-    { network:'fip', name:'FIP Pop',              genre:'Pop',                url:'https://icecast.radiofrance.fr/fippop-midfi.mp3?id=radiofrance' },
+    { network:'fip', name:'FIP Pop',              genre:'Pop',                url:'https://icecast.radiofrance.fr/fippop-midfi.mp3?id=radiofrance', now:{type:'fiptracks', slug:'fip/radio-pop'} },
     { network:'fip', name:'FIP Rock',             genre:'Rock',               url:'https://icecast.radiofrance.fr/fiprock-midfi.mp3?id=radiofrance', now:{type:'fip', id:64} },
     { network:'fip', name:'FIP Jazz',             genre:'Jazz',               url:'https://icecast.radiofrance.fr/fipjazz-midfi.mp3?id=radiofrance', now:{type:'fip', id:65} },
     { network:'fip', name:'FIP Groove',           genre:'Groove · funk · soul', url:'https://icecast.radiofrance.fr/fipgroove-midfi.mp3?id=radiofrance', now:{type:'fip', id:66} },
@@ -893,7 +893,7 @@
   }
   function hasNowSource(s){
     if(!s) return false;
-    if(s.now) return s.now.type !== 'rp' || !!RELAY_URL;
+    if(s.now) return !['rp', 'fiptracks'].includes(s.now.type) || !!RELAY_URL;
     return icyEligible(s);
   }
 
@@ -1416,6 +1416,16 @@
     return { title: title, artist: artist, cover: cover, spotifyQuery: artist + ' ' + title };
   }
 
+  // Latest track on a FIP webradio that has no livemeta ID, read by the relay from
+  // radiofrance.fr's own site (unofficial; if it changes the card just stops showing).
+  async function fetchFipTracksNow(slug){
+    const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/fip?slug=' + encodeURIComponent(slug));
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!data || !data.title) return null;
+    return { title: data.title, artist: data.artist, cover: null, spotifyQuery: data.artist ? data.artist + ' ' + data.title : null };
+  }
+
   async function fetchRpNow(chan){
     const target = 'https://api.radioparadise.com/api/now_playing?chan=' + chan;
     const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/json?u=' + encodeURIComponent(target));
@@ -1471,6 +1481,7 @@
       if(station.now.type === 'icecast') return await fetchIcecastNow(station.now.host, station.now.mount);
       if(station.now.type === 'bbc') return await fetchBbcNow(station.now.service);
       if(station.now.type === 'rp' && RELAY_URL) return await fetchRpNow(station.now.chan);
+      if(station.now.type === 'fiptracks' && RELAY_URL) return await fetchFipTracksNow(station.now.slug);
     } catch(e){ return null; }
     return null;
   }

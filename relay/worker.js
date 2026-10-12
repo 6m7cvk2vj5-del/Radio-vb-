@@ -4,6 +4,8 @@
 //   GET /icy?u=<https stream url>   reads the song title embedded in an Icecast/Shoutcast
 //                                   stream (ICY metadata) and returns {raw, artist, title}
 //   GET /json?u=<https json url>    passes a JSON response through with CORS allowed
+//   GET /fip?slug=fip/radio-pop     latest track on a FIP webradio, read from radiofrance.fr's
+//                                   own site (an unofficial endpoint that could change)
 //
 // It is NOT an open proxy: it only talks to hosts that appear as station URLs in the live Dial
 // page (PAGE_URL), so adding a station to index.html needs no change here, and it only answers
@@ -65,6 +67,10 @@ async function allowedStreamHosts() {
 
 // JSON endpoints that may be passed through.
 const JSON_HOSTS = ['api.radioparadise.com'];
+
+// radiofrance.fr's own "recent tracks" call for a FIP webradio page. Unofficial: it is the site's
+// internal SvelteKit remote function, so the id (1wiyrg4) or the reply format may change.
+const FIP_REMOTE = 'https://www.radiofrance.fr/_app/remote/1wiyrg4/loadTracks';
 
 const TIMEOUT_MS = 8000;
 const MAX_METAINT = 65536;      // sanity cap on the metadata interval (SomaFM uses 45000)
@@ -186,6 +192,71 @@ async function passJson(url) {
   }
 }
 
+// Minimal "devalue" decoder (SvelteKit's wire format): a flat array where objects and arrays
+// refer to each other by index, and -1 means undefined.
+function unflatten(parsed) {
+  const memo = new Map();
+  function hydrate(i) {
+    if (i === -1) return undefined;
+    if (i === -2) return NaN;
+    if (i === -3) return Infinity;
+    if (i === -4) return -Infinity;
+    if (i === -5) return -0;
+    if (memo.has(i)) return memo.get(i);
+    const v = parsed[i];
+    if (v === null || typeof v !== 'object') { memo.set(i, v); return v; }
+    if (Array.isArray(v)) {
+      const out = [];
+      memo.set(i, out);
+      for (const ref of v) out.push(hydrate(ref));
+      return out;
+    }
+    const out = {};
+    memo.set(i, out);
+    for (const k of Object.keys(v)) out[k] = hydrate(v[k]);
+    return out;
+  }
+  return hydrate(0);
+}
+
+function parisDate(offsetDays) {
+  const d = new Date(Date.now() + offsetDays * 86400000);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+
+// The newest entry of a decoded loadTracks reply, as {title, artist, time}; null if none.
+function newestFipTrack(outerText) {
+  const outer = JSON.parse(outerText);
+  if (!outer || outer.type !== 'result') return null;
+  const root = unflatten(JSON.parse(outer.result));
+  const first = root && root.items && root.items[0];
+  const tp = first && first.data && first.data.titleProps;
+  if (!tp || !tp.text) return null;
+  return { title: tp.text, artist: tp.title || null, time: first.label || null };
+}
+
+async function fipLatest(slug) {
+  // The payload is the page's own request: today's date (Paris), limit 10, this slug. Just after
+  // midnight today's list can still be empty, so fall back to yesterday.
+  for (const offset of [0, -1]) {
+    const payload = btoa(JSON.stringify([['__skrao', 1], { date: 2, limit: 3, slug: 4, timeslot: -1 }, parisDate(offset), 10, slug]))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(FIP_REMOTE + '?payload=' + payload, { headers: { Accept: 'application/json' }, signal: ctrl.signal });
+      if (!res.ok) continue;
+      const info = newestFipTrack(await res.text());
+      if (info) return info;
+    } catch (e) {
+      // try the next date
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+}
+
 export default {
   async fetch(req) {
     if (req.method === 'OPTIONS') {
@@ -203,6 +274,14 @@ export default {
     if (req.method !== 'GET') return reply({ error: 'method not allowed' }, 405);
 
     const url = new URL(req.url);
+
+    if (url.pathname === '/fip') {
+      const slug = url.searchParams.get('slug') || '';
+      if (!/^fip\/[a-z0-9-]+$/.test(slug)) return reply({ error: 'bad slug' }, 400);
+      const info = await fipLatest(slug);
+      return reply(info || { title: null, artist: null, time: null }, 200);
+    }
+
     let target;
     try { target = new URL(url.searchParams.get('u')); } catch (e) { return reply({ error: 'bad url' }, 400); }
     if (target.protocol !== 'https:') return reply({ error: 'https only' }, 400);
