@@ -50,3 +50,8 @@ Add `&debug=1` to the test address to see what the station actually sends the re
 `https://dial-relay.<your-name>.workers.dev/icy?debug=1&u=https://ice1.somafm.com/groovesalad-128-mp3`
 The reply includes the upstream status, the stream's `icy-metaint` header (present only if the
 station sends titles), the length of each metadata block, and a `stoppedBecause` reason.
+
+To test every live station at once, run `python3 tools/check_relay.py https://your-worker.workers.dev`
+(Python 3, no installs). It prints one line per station: `TITLE` if the relay got a song title,
+`NONE` with the reason if it didn't, `ERROR` if the relay itself couldn't be reached.
+

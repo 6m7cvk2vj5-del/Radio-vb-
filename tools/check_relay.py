@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""Run every live Dial station through the relay and report what each one returns.
+
+    python3 tools/check_relay.py https://your-worker.workers.dev
+    python3 tools/check_relay.py https://your-worker.workers.dev --page https://6m7cvk2vj5-del.github.io/Radio-vb-/
+    python3 tools/check_relay.py https://your-worker.workers.dev --file index.html --only soma,nts
+
+Reads the station list from the published Dial page (or a local index.html), asks the relay's
+/icy?debug=1 endpoint about each live stream, and prints one line per station plus a summary.
+Uses only the Python standard library. Finite files (talks, meditations) and HLS streams are
+skipped, since they carry no embedded titles.
+"""
+import argparse, json, re, sys, urllib.parse, urllib.request
+from concurrent.futures import ThreadPoolExecutor
+
+DEFAULT_PAGE = 'https://6m7cvk2vj5-del.github.io/Radio-vb-/'
+SKIP_NETWORKS = {'meditate', 'slaa', 'cbc', 'bbc'}      # finite files / HLS
+LINE = re.compile(r"\{\s*network:\s*'(\w+)',\s*name:\s*(?:'([^']*)'|\"([^\"]*)\")(.*)")
+URL = re.compile(r"\b(url|lowUrl):\s*(?:'([^']+)'|\"([^\"]+)\")")
+
+
+def load_html(args):
+    if args.file:
+        return open(args.file, encoding='utf-8').read()
+    req = urllib.request.Request(args.page, headers={'User-Agent': 'dial-relay-check'})
+    return urllib.request.urlopen(req, timeout=20).read().decode('utf-8')
+
+
+def parse_stations(html):
+    out = []
+    for line in html.splitlines():
+        m = LINE.search(line)
+        if not m:
+            continue
+        network, name = m.group(1), m.group(2) or m.group(3)
+        urls = {k: (a or b) for k, a, b in URL.findall(m.group(4))}
+        if 'url' not in urls:          # pool stations have no url of their own
+            continue
+        out.append({'network': network, 'name': name, 'url': urls['url'], 'low': urls.get('lowUrl')})
+    return out
+
+
+def ask(relay, url, timeout=20):
+    q = relay.rstrip('/') + '/icy?debug=1&u=' + urllib.parse.quote(url, safe='')
+    req = urllib.request.Request(q, headers={'User-Agent': 'dial-relay-check'})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode('utf-8'))
+    except Exception as e:                       # network / HTTP / bad JSON
+        return {'error': str(e)}
+
+
+def summarize(d):
+    if 'error' in d and 'trace' not in d:
+        return 'ERROR', '-', d['error']
+    t = d.get('trace', {})
+    res = d.get('result')
+    if res and res.get('title'):
+        who = (res.get('artist') + ' - ' if res.get('artist') else '') + res['title']
+        return 'TITLE', t.get('metaint', '-'), who
+    why = t.get('stoppedBecause') or t.get('error') or 'no title'
+    if t.get('status') not in (None, 200):
+        why = 'HTTP %s from station; %s' % (t.get('status'), why)
+    return 'NONE', t.get('metaint') or '-', why
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('relay', help='your Worker address, e.g. https://dial-relay.you.workers.dev')
+    ap.add_argument('--page', default=DEFAULT_PAGE, help='published Dial page to read stations from')
+    ap.add_argument('--file', help='read stations from a local index.html instead')
+    ap.add_argument('--only', help='comma-separated network ids to test, e.g. soma,club')
+    ap.add_argument('--workers', type=int, default=6)
+    args = ap.parse_args()
+
+    stations = [s for s in parse_stations(load_html(args))
+                if s['network'] not in SKIP_NETWORKS
+                and not re.search(r'\.m3u8(\?|$)', s['url'])
+                and 'archive.org' not in s['url']]
+    if args.only:
+        keep = set(args.only.split(','))
+        stations = [s for s in stations if s['network'] in keep]
+    if not stations:
+        sys.exit('no stations found to test')
+
+    print('Testing %d live stations through %s\n' % (len(stations), args.relay))
+    with ThreadPoolExecutor(max_workers=args.workers) as ex:
+        results = list(ex.map(lambda s: ask(args.relay, s['url']), stations))
+
+    counts = {'TITLE': 0, 'NONE': 0, 'ERROR': 0}
+    for s, d in zip(stations, results):
+        kind, metaint, detail = summarize(d)
+        counts[kind] += 1
+        print('%-6s %-9s %-30s metaint=%-6s %s' % (kind, s['network'], s['name'][:30], metaint, detail))
+    print('\nSummary: %d returned a title, %d returned nothing, %d errors'
+          % (counts['TITLE'], counts['NONE'], counts['ERROR']))
+
+
+if __name__ == '__main__':
+    main()
