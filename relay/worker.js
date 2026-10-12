@@ -67,8 +67,9 @@ async function allowedStreamHosts() {
 const JSON_HOSTS = ['api.radioparadise.com'];
 
 const TIMEOUT_MS = 8000;
-const MAX_METAINT = 32768;      // sanity cap on the metadata interval
-const MAX_BLOCKS = 3;           // metadata is only sent on change; look at up to 3 intervals
+const MAX_METAINT = 65536;      // sanity cap on the metadata interval (SomaFM uses 45000)
+const MAX_BLOCKS = 12;          // metadata is only sent on change; look at up to 12 intervals...
+const MAX_TOTAL_BYTES = 160000; // ...but never read more than this much audio
 
 function reply(body, status, extra) {
   return new Response(JSON.stringify(body), {
@@ -126,6 +127,7 @@ async function readIcyFromResponse(res, trace) {
   try {
     let pos = 0;
     for (let block = 0; block < MAX_BLOCKS; block++) {
+      if (block > 0 && pos + metaint + 1 > MAX_TOTAL_BYTES) break;
       if (!(await ensure(pos + metaint + 1))) { if (trace) trace.stoppedBecause = 'stream ended early'; return null; }
       const len = buf[pos + metaint] * 16;
       if (trace) trace.blocks.push(len);
@@ -134,13 +136,18 @@ async function readIcyFromResponse(res, trace) {
         if (!(await ensure(start + len))) return null;
         const text = new TextDecoder('utf-8').decode(buf.slice(start, start + len)).replace(/\0+$/, '');
         if (trace) trace.metadataText = text;
-        const m = text.match(/StreamTitle='([\s\S]*?)';/) || text.match(/StreamTitle='([\s\S]*)$/);
+        const m = text.match(/StreamTitle='([\s\S]*?)';/) || text.match(/StreamTitle='([\s\S]*)$/)
+          || text.match(/StreamTitle="([^"]*)"/);
         const raw = m ? m[1].trim() : '';
-        return raw ? splitTitle(raw) : null;
+        if (raw) return splitTitle(raw);
+        pos = start + len; // metadata present but the title is blank — keep looking
+        continue;
       }
       pos = start; // empty block: "unchanged" — look at the next interval
     }
-    if (trace) trace.stoppedBecause = 'no title in the first ' + MAX_BLOCKS + ' metadata blocks';
+    if (trace) trace.stoppedBecause = trace.metadataText !== undefined
+      ? 'metadata present but StreamTitle is blank (the station sends no song info)'
+      : 'no metadata in the first ' + trace.blocks.length + ' intervals';
     return null;
   } finally {
     try { await reader.cancel(); } catch (e) {}

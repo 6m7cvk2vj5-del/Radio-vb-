@@ -1422,16 +1422,37 @@
     return { title: data.title, artist: data.artist, cover: data.cover_med || data.cover, spotifyQuery: data.artist + ' ' + data.title };
   }
 
-  // Song title embedded in the live stream itself, read by the relay. Many stations just echo
-  // their own name when no song is known — those are dropped so the card doesn't show noise.
+  // Song title embedded in the live stream itself, read by the relay. Stations put all sorts of
+  // things in there, so tidy it: decode HTML entities, drop dangling dashes and "(Listen on
+  // Spotify)"-style promos, and ignore placeholders, the station's own name and bare web
+  // addresses. If the "artist" is just the station's name, it's a show title, not a song.
+  function decodeEntities(t){
+    return String(t || '').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'")
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  }
+  function cleanIcyTitle(station, rawIn){
+    const norm = t => String(t || '').trim().toLowerCase();
+    let raw = decodeEntities(rawIn).replace(/\s*\((?:listen|visit|more)[^)]*\)\s*$/i, '');
+    raw = raw.replace(/^[-–—\s]+/, '').replace(/[-–—\s]+$/, '').trim();
+    if(!raw) return null;
+    if(/^[\w-]+\.(com|net|org|fm|co\.uk)$/i.test(raw)) return null;
+    if([station.name, networkLabel(station.network), 'now playing info goes here', 'unknown', 'untitled']
+        .some(x => norm(x) === norm(raw))) return null;
+    let artist = null, title = raw;
+    const i = raw.indexOf(' - ');
+    if(i > 0){ artist = raw.slice(0, i).trim(); title = raw.slice(i + 3).trim(); }
+    if(artist && (norm(artist).includes(norm(station.name)) || norm(station.name).includes(norm(artist)))) artist = null;
+    if(!title) return null;
+    return { title: title, artist: artist };
+  }
+
   async function fetchIcyNow(station){
     const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/icy?u=' + encodeURIComponent(currentPlayUrl));
     if(!res.ok) return null;
     const data = await res.json();
-    if(!data || !data.title) return null;
-    const norm = t => String(t || '').trim().toLowerCase();
-    if(norm(data.title) === norm(station.name) || norm(data.raw) === norm(station.name) || norm(data.raw) === norm(networkLabel(station.network))) return null;
-    return { title: data.title, artist: data.artist, cover: null, spotifyQuery: data.artist ? data.artist + ' ' + data.title : null };
+    const c = data && cleanIcyTitle(station, data.raw || data.title);
+    if(!c) return null;
+    return { title: c.title, artist: c.artist, cover: null, spotifyQuery: c.artist ? c.artist + ' ' + c.title : null };
   }
 
   async function fetchNowPlaying(station){

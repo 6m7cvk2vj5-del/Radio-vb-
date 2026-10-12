@@ -125,7 +125,7 @@ def main():
             return
         if args.verbose and kind != 'TITLE':
             t = d.get('trace', {})
-            print('         url=%s status=%s blocks=%s headers=%s' % (s['url'], t.get('status'), t.get('blocks'), json.dumps(t.get('headers', {}))))
+            print('         url=%s status=%s blocks=%s metadata=%r headers=%s' % (s['url'], t.get('status'), t.get('blocks'), t.get('metadataText'), json.dumps(t.get('headers', {}))))
     print('\nSummary: %d returned a title, %d returned nothing, %d errors'
           % (counts['TITLE'], counts['NONE'], counts['ERROR']))
 
