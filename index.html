@@ -1466,6 +1466,21 @@
   // hands that service's link to the phone's share sheet (or copies it).
   let searchMode = 'search';
 
+  // Apple's web search page can come up blank, so ask the public iTunes Search API for the
+  // track and link straight to it. Returns null when it finds nothing or the lookup fails.
+  async function lookupAppleMusic(q){
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 4000);
+      const res = await fetch('https://itunes.apple.com/search?media=music&entity=song&limit=1&term=' + encodeURIComponent(q), { signal: ctl.signal });
+      clearTimeout(timer);
+      if(!res.ok) return null;
+      const data = await res.json();
+      const hit = data.results && data.results[0];
+      return hit && hit.trackViewUrl ? hit.trackViewUrl : null;
+    } catch(e){ return null; }
+  }
+
   function openPicker(mode){
     if(!searchQuery) return;
     searchMode = mode;
@@ -1477,6 +1492,10 @@
       const a = document.createElement('a');
       a.href = svc.url(searchQuery);
       a.textContent = svc.name;
+      if(svc.name === 'Apple Music'){
+        const q = searchQuery;
+        lookupAppleMusic(q).then(url => { if(url && q === searchQuery) a.href = url; });
+      }
       if(mode === 'share'){
         a.addEventListener('click', (e) => { e.preventDefault(); closeSearch(); shareLink(a.href); });
       } else {
