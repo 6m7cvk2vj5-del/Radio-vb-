@@ -747,13 +747,15 @@
     { network:'fip', name:'FIP Nouveautés',       genre:'New releases',       url:'https://icecast.radiofrance.fr/fipnouveautes-midfi.mp3?id=radiofrance', now:{type:'fip', id:70} },
     { network:'fip', name:'FIP Sacré Français',   genre:'French chanson',     url:'https://icecast.radiofrance.fr/fipsacrefrancais-midfi.mp3?id=radiofrance' },
 
-    // Radio Paradise — its four mixes (no metadata: undocumented per-mix channel param + historic CORS issues).
+    // Radio Paradise — its four mixes. No now-playing metadata: api.radioparadise.com sends no
+    // Access-Control-Allow-Origin header (verified blocked from github.io for now_playing,
+    // nowplaying_list_v2022 and get_block), so a browser page can't read it.
     // lowUrl/lowKbps: RP's own naming scheme is "{mix}-{bitrate}"; mp3-32 is confirmed on their
     // published stream-links page, the other three mixes follow the same documented convention.
-    { network:'rp', name:'Main Mix',   genre:'Rock · eclectic',  url:'https://stream.radioparadise.com/mp3-192', lowUrl:'https://stream.radioparadise.com/mp3-32', lowKbps:32, now:{type:'rp', chan:0} },
-    { network:'rp', name:'Mellow Mix', genre:'Chill · acoustic', url:'https://stream.radioparadise.com/mellow-192', lowUrl:'https://stream.radioparadise.com/mellow-32', lowKbps:32, now:{type:'rp', chan:1} },
-    { network:'rp', name:'Rock Mix',   genre:'Rock-focused',     url:'https://stream.radioparadise.com/rock-192', lowUrl:'https://stream.radioparadise.com/rock-32', lowKbps:32, now:{type:'rp', chan:2} },
-    { network:'rp', name:'Global Mix', genre:'World · eclectic', url:'https://stream.radioparadise.com/world-etc-192', lowUrl:'https://stream.radioparadise.com/world-etc-32', lowKbps:32, now:{type:'rp', chan:3} },
+    { network:'rp', name:'Main Mix',   genre:'Rock · eclectic',  url:'https://stream.radioparadise.com/mp3-192', lowUrl:'https://stream.radioparadise.com/mp3-32', lowKbps:32 },
+    { network:'rp', name:'Mellow Mix', genre:'Chill · acoustic', url:'https://stream.radioparadise.com/mellow-192', lowUrl:'https://stream.radioparadise.com/mellow-32', lowKbps:32 },
+    { network:'rp', name:'Rock Mix',   genre:'Rock-focused',     url:'https://stream.radioparadise.com/rock-192', lowUrl:'https://stream.radioparadise.com/rock-32', lowKbps:32 },
+    { network:'rp', name:'Global Mix', genre:'World · eclectic', url:'https://stream.radioparadise.com/world-etc-192', lowUrl:'https://stream.radioparadise.com/world-etc-32', lowKbps:32 },
 
     // SomaFM — no metadata: their third-party API was officially discontinued.
     // lowUrl/lowKbps: SomaFM's FAQ confirms they publish 32k AAC-HE streams for every channel
@@ -1396,16 +1398,6 @@
     return { title: title, artist: artist, cover: cover, spotifyQuery: artist + ' ' + title };
   }
 
-  async function fetchRpNow(chan){
-    const res = await fetch('https://api.radioparadise.com/api/now_playing?chan=' + chan);
-    if(!res.ok) return null;
-    const data = await res.json();
-    const title = data.title;
-    const artist = data.artist;
-    if(!title || !artist) return null;
-    return { title: title, artist: artist, cover: data.cover, spotifyQuery: artist + ' ' + title };
-  }
-
   async function fetchNowPlaying(station){
     if(!station.now) return null;
     try{
@@ -1415,7 +1407,6 @@
       if(station.now.type === 'airtime') return await fetchAirtimeNow(station.now.host);
       if(station.now.type === 'icecast') return await fetchIcecastNow(station.now.host, station.now.mount);
       if(station.now.type === 'bbc') return await fetchBbcNow(station.now.service);
-      if(station.now.type === 'rp') return await fetchRpNow(station.now.chan);
     } catch(e){ return null; }
     return null;
   }
