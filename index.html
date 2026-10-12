@@ -1019,6 +1019,22 @@
     }, ms);
   }
 
+  // Last line of defence for a live stream that delivers a burst of audio ('playing' fires and
+  // cancels the timers above) and then goes quiet without any further event. Watch the clock
+  // itself: if it hasn't moved for a while, reconnect. Finite files (talks, meditations) are
+  // left to the browser — they legitimately pause and buffer.
+  const NO_PROGRESS_MS = 12000;
+  let progressLastTime = 0, progressLastAt = Date.now();
+  function markProgress(){ progressLastTime = audio.currentTime; progressLastAt = Date.now(); }
+  setInterval(() => {
+    if(!userWantsPlaying || currentIndex === null || audio.paused || isFinite(audio.duration)) { markProgress(); return; }
+    if(Math.abs(audio.currentTime - progressLastTime) > 0.1){ markProgress(); return; }
+    const limit = isHls(currentPlayUrl) ? HLS_STUCK_BUFFERING_MS + NO_PROGRESS_MS : NO_PROGRESS_MS;
+    if(Date.now() - progressLastAt < limit) return;
+    markProgress();
+    attemptReconnect();
+  }, 1000);
+
   function clearRecoveryTimers(){
     if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
     if(waitingTimer){ clearTimeout(waitingTimer); waitingTimer = null; }
@@ -1302,6 +1318,9 @@
       statusEl.textContent = "Couldn't connect — try another preset";
     });
     armConnectWatchdog();
+    markProgress();
+    // Don't wait for audio to start before asking for song info.
+    startNowPlayingPolling();
   }
 
   function attemptReconnect(){
@@ -1341,6 +1360,7 @@
       reconnectTimer = setTimeout(attemptReconnect, 2500);
     });
     armConnectWatchdog();
+    markProgress();
   }
 
   function fadeVolumeTo(target, seconds, onComplete){
@@ -1644,8 +1664,13 @@
 
   // Latest track on a FIP webradio that has no livemeta ID, read by the relay from
   // radiofrance.fr's own site (unofficial; if it changes the card just stops showing).
+  // A relay call that hangs would leave the card on "Waiting for song info…" forever.
+  function relayFetch(path){
+    return fetch(RELAY_URL.replace(/\/$/, '') + path, { signal: AbortSignal.timeout(10000) });
+  }
+
   async function fetchFipTracksNow(slug){
-    const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/fip?slug=' + encodeURIComponent(slug));
+    const res = await relayFetch('/fip?slug=' + encodeURIComponent(slug));
     if(!res.ok) return null;
     const data = await res.json();
     if(!data || !data.title) return null;
@@ -1654,7 +1679,7 @@
 
   async function fetchRpNow(chan){
     const target = 'https://api.radioparadise.com/api/now_playing?chan=' + chan;
-    const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/json?u=' + encodeURIComponent(target));
+    const res = await relayFetch('/json?u=' + encodeURIComponent(target));
     if(!res.ok) return null;
     const data = await res.json();
     if(!data.title || !data.artist) return null;
@@ -1686,7 +1711,7 @@
   }
 
   async function fetchIcyNow(station){
-    const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/icy?u=' + encodeURIComponent(canonicalSomaUrl(currentPlayUrl)));
+    const res = await relayFetch('/icy?u=' + encodeURIComponent(canonicalSomaUrl(currentPlayUrl)));
     if(!res.ok) return null;
     const data = await res.json();
     const c = data && cleanIcyTitle(station, data.raw || data.title);
