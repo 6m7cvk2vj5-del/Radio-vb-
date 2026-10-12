@@ -882,8 +882,11 @@
   // Optional relay (a small Cloudflare Worker you own — see docs/relay-setup.md). It lets Dial
   // read track info that browsers block (Radio Paradise) and titles embedded inside live
   // streams (ICY metadata). Leave empty to turn this off; everything else works without it.
-  const RELAY_URL = '';
-  const ICY_NETWORKS = ['fip', 'soma', 'nts', 'club', 'piano', 'classical', 'yoga'];
+  const RELAY_URL = 'https://floral-sun-ab84.j788kw7ytk.workers.dev';
+  // Networks whose streams carry song titles worth asking for. Left out on purpose: FIP (its
+  // servers send no titles; the channels with an ID use FIP's own API) and Piano (those streams
+  // carry only ad-insertion markers, never titles). Checked with tools/check_relay.py.
+  const ICY_NETWORKS = ['soma', 'nts', 'club', 'classical', 'yoga'];
   function icyEligible(s){
     return !!RELAY_URL && !s.now && !s.pool && ICY_NETWORKS.includes(s.network)
       && /^https:/.test(currentPlayUrl || '') && !isHls(currentPlayUrl);
