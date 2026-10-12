@@ -962,8 +962,8 @@
   let waitingTimer = null; // escalates a stuck "Buffering…" (no stalled/error fired) into a reconnect
   let currentPlayUrl = null; // the exact URL actually loaded — needed for pool stations, which have no s.url
   const MAX_RECONNECT_ATTEMPTS = 6;
-  const STUCK_BUFFERING_MS = 8000;
-  const CONNECT_TIMEOUT_MS = 8000;
+  const STUCK_BUFFERING_MS = 15000;
+  const CONNECT_TIMEOUT_MS = 20000; // slow starts (SomaFM on cellular) need well over 8s before the first audio
   const HEALTHY_PLAY_MS = 10000; // how long audio must run before a blip stops counting against the retry budget
   let healthyTimer = null;
   // HLS (.m3u8) streams in Safari do their own segment fetching and rebuffering, and on
@@ -1023,7 +1023,7 @@
   // cancels the timers above) and then goes quiet without any further event. Watch the clock
   // itself: if it hasn't moved for a while, reconnect. Finite files (talks, meditations) are
   // left to the browser — they legitimately pause and buffer.
-  const NO_PROGRESS_MS = 12000;
+  const NO_PROGRESS_MS = 20000;
   let progressLastTime = 0, progressLastAt = Date.now();
   function markProgress(){ progressLastTime = audio.currentTime; progressLastAt = Date.now(); }
   setInterval(() => {
@@ -1337,7 +1337,9 @@
     // it has to reconnect at the current live edge, so we bust any stale cached request.
     // Uses currentPlayUrl rather than s.url: pool-based stations (Singing Bowls, Forest
     // Sounds) have no url on the station object itself, only on the picked pool track.
-    const base = nextSomaNode(currentPlayUrl || stations[currentIndex].url);
+    // Give each SomaFM node two tries (a slow start isn't a dead node) before moving on.
+    const cur = currentPlayUrl || stations[currentIndex].url;
+    const base = reconnectAttempts % 2 === 0 ? nextSomaNode(cur) : cur;
     currentPlayUrl = base;
     const hls = isHls(base);
     const sep = base.includes('?') ? '&' : '?';
@@ -1797,7 +1799,7 @@
     if(userWantsPlaying && !reconnectTimer){
       // Only claim "Buffering…" if there genuinely isn't enough data to keep playing.
       if(audio.paused || audio.readyState < 3) statusEl.textContent = 'Buffering…';
-      reconnectTimer = scheduleRecovery(isHls(currentPlayUrl) ? HLS_STALLED_MS : 5000, attemptReconnect);
+      reconnectTimer = scheduleRecovery(isHls(currentPlayUrl) ? HLS_STALLED_MS : 12000, attemptReconnect);
     }
   });
 
