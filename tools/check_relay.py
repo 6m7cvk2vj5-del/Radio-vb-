@@ -74,6 +74,8 @@ def ask(relay, url, timeout=20):
 def summarize(d):
     if 'error' in d and 'trace' not in d:
         return 'ERROR', '-', d['error']
+    if 'trace' not in d and 'error' not in d:
+        return 'OLDWORKER', '-', 'relay replied without debug info: redeploy the latest relay/worker.js in Cloudflare'
     t = d.get('trace', {})
     res = d.get('result')
     if res and res.get('title'):
@@ -112,11 +114,15 @@ def main():
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
         results = list(ex.map(lambda s: ask(args.relay, s['url']), stations))
 
-    counts = {'TITLE': 0, 'NONE': 0, 'ERROR': 0}
+    counts = {'TITLE': 0, 'NONE': 0, 'ERROR': 0, 'OLDWORKER': 0}
     for s, d in zip(stations, results):
         kind, metaint, detail = summarize(d)
         counts[kind] += 1
         print('%-6s %-9s %-30s metaint=%-6s %s' % (kind, s['network'], s['name'][:30], metaint, detail))
+        if kind == 'OLDWORKER' and counts['OLDWORKER'] == len(stations):
+            print('\nThe Worker in Cloudflare is an old version that does not support debug=1.')
+            print('Open relay/worker.js from the repo, paste ALL of it into the Worker\'s "Edit code", press Deploy, then run this again.')
+            return
         if args.verbose and kind != 'TITLE':
             t = d.get('trace', {})
             print('         url=%s status=%s blocks=%s headers=%s' % (s['url'], t.get('status'), t.get('blocks'), json.dumps(t.get('headers', {}))))
