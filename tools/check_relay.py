@@ -71,6 +71,7 @@ def main():
     ap.add_argument('--file', help='read stations from a local index.html instead')
     ap.add_argument('--only', help='comma-separated network ids to test, e.g. soma,club')
     ap.add_argument('--workers', type=int, default=6)
+    ap.add_argument('--verbose', action='store_true', help='also print the station response headers for every failure')
     args = ap.parse_args()
 
     stations = [s for s in parse_stations(load_html(args))
@@ -92,6 +93,9 @@ def main():
         kind, metaint, detail = summarize(d)
         counts[kind] += 1
         print('%-6s %-9s %-30s metaint=%-6s %s' % (kind, s['network'], s['name'][:30], metaint, detail))
+        if args.verbose and kind != 'TITLE':
+            t = d.get('trace', {})
+            print('         url=%s status=%s blocks=%s headers=%s' % (s['url'], t.get('status'), t.get('blocks'), json.dumps(t.get('headers', {}))))
     print('\nSummary: %d returned a title, %d returned nothing, %d errors'
           % (counts['TITLE'], counts['NONE'], counts['ERROR']))
 

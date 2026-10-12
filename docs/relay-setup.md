@@ -52,6 +52,6 @@ The reply includes the upstream status, the stream's `icy-metaint` header (prese
 station sends titles), the length of each metadata block, and a `stoppedBecause` reason.
 
 To test every live station at once, run `python3 tools/check_relay.py https://your-worker.workers.dev`
-(Python 3, no installs). It prints one line per station: `TITLE` if the relay got a song title,
+(Python 3, no installs; add `--verbose` for the station response headers on failures). It prints one line per station: `TITLE` if the relay got a song title,
 `NONE` with the reason if it didn't, `ERROR` if the relay itself couldn't be reached.
 
