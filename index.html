@@ -207,7 +207,7 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    .settingsOverlay, .settingsPanel{ transition: none; }
+    .settingsOverlay, .settingsPanel, .pickerPop{ transition: none; }
   }
 
   main{
@@ -252,6 +252,7 @@
     background: var(--panel);
     border: 1px solid var(--hairline);
     border-radius: 12px;
+    position: relative;
   }
   .trackInfo{
     display: flex;
@@ -301,17 +302,6 @@
     margin: 0 0 6px !important;
     min-height: 1.3em;
   }
-  .spotifyLink{
-    display: none;
-    align-items: center;
-    gap: 5px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: calc(11px * var(--font-scale));
-    letter-spacing: 0.03em;
-    color: var(--amber);
-    text-decoration: none;
-  }
-  .spotifyLink svg{ width: 12px; height: 12px; }
   .trackActions{
     min-height: calc(18px * var(--font-scale));
     display: flex;
@@ -319,7 +309,7 @@
     flex-wrap: wrap;
     gap: 4px 14px;
   }
-  .shareBtn{
+  .shareBtn, .searchBtn{
     display: none;
     appearance: none;
     background: none;
@@ -333,7 +323,62 @@
     letter-spacing: 0.03em;
     color: var(--amber);
   }
-  .shareBtn svg{ width: 12px; height: 12px; }
+  .shareBtn svg, .searchBtn svg{ width: 12px; height: 12px; }
+  /* The service picker sits on top of the player card, covering the song and controls. */
+  .pickerPop{
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    z-index: 20;
+    padding: 12px 12px 14px;
+    background: var(--panel);
+    border: 1px solid var(--amber);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    opacity: 0;
+    transform: scale(0.97);
+    transform-origin: top center;
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  .pickerPop.open{ opacity: 1; transform: none; pointer-events: auto; }
+  .pickerHead{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: calc(14px * var(--font-scale));
+    font-weight: 500;
+    color: var(--text);
+  }
+  .pickerHead .settingsClose{ font-size: calc(14px * var(--font-scale)); }
+  .searchSong{
+    margin: 6px 0 12px !important;
+    font-size: calc(11px * var(--font-scale));
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .searchOptions{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .searchOptions a{
+    display: block;
+    padding: 10px 8px;
+    text-align: center;
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: 9px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: calc(12px * var(--font-scale));
+    color: var(--amber);
+    text-decoration: none;
+  }
+  .searchOptions a:active{ background: var(--amber); color: var(--bg); }
 
   .tabsWrap{
     overflow-x: auto;
@@ -661,6 +706,14 @@
         <p id="stationSub"></p>
 
         <div class="trackCard empty" id="trackCard">
+          <div class="pickerPop" id="searchOverlay" role="dialog" aria-labelledby="searchTitle">
+            <div class="pickerHead">
+              <span id="searchTitle">Search with&hellip;</span>
+              <button class="settingsClose" id="searchClose" aria-label="Close">✕</button>
+            </div>
+            <p class="searchSong" id="searchSong"></p>
+            <ul class="searchOptions" id="searchOptions"></ul>
+          </div>
           <div class="trackInfo">
             <div class="artwork" id="artwork">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
@@ -670,10 +723,10 @@
               <p class="trackTitle" id="trackTitle">Nothing playing</p>
               <p class="trackArtist" id="trackArtist"></p>
               <div class="trackActions">
-                <a class="spotifyLink" id="spotifyLink" href="#" target="_blank" rel="noopener">
-                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.4.1-.7-.1-.8-.5-.1-.4.1-.7.5-.8 4-.9 7.5-.5 10.3 1.2.3.2.4.6.2.9zm1.2-2.7c-.2.3-.7.5-1 .3-2.9-1.8-7.3-2.3-10.7-1.3-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.9-1.2 8.7-.6 12 1.5.4.2.5.7.2 1zm.1-2.8C14.3 8.8 8.9 8.6 5.7 9.6c-.5.1-1-.2-1.1-.6-.1-.5.2-1 .6-1.1 3.7-1.1 9.7-.9 13.5 1.4.4.3.6.9.3 1.3-.3.4-.9.5-1.3.3z"></path></svg>
-                  Search on Spotify
-                </a>
+                <button class="searchBtn" id="searchBtn" type="button" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+                  Search with&hellip;
+                </button>
                 <button class="shareBtn" id="shareBtn" type="button" aria-label="Share this song">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path><path d="M16 6l-4-4-4 4"></path><path d="M12 2v13"></path></svg>
                   <span id="shareLabel">Share</span>
@@ -1072,7 +1125,7 @@
   const trackTitleEl = document.getElementById('trackTitle');
   const trackArtistEl = document.getElementById('trackArtist');
   const artworkImg = document.getElementById('artworkImg');
-  const spotifyLink = document.getElementById('spotifyLink');
+  const searchBtn = document.getElementById('searchBtn');
   const shareBtn = document.getElementById('shareBtn');
   const shareLabel = document.getElementById('shareLabel');
 
@@ -1367,9 +1420,9 @@
     trackTitleEl.textContent = message || 'Nothing playing';
     trackArtistEl.textContent = '';
     artworkImg.style.display = 'none';
-    spotifyLink.style.display = 'none';
+    searchBtn.style.display = 'none';
     shareBtn.style.display = 'none';
-    shareUrl = '';
+    searchQuery = '';
   }
 
   function showTrackCard(title, artist, coverUrl, spotifyQuery){
@@ -1384,21 +1437,88 @@
       artworkImg.style.display = 'none';
     }
     if(spotifyQuery){
-      spotifyLink.href = 'https://open.spotify.com/search/' + encodeURIComponent(spotifyQuery);
-      spotifyLink.style.display = 'inline-flex';
+      searchQuery = spotifyQuery;
+      searchBtn.style.display = 'inline-flex';
       shareBtn.style.display = 'inline-flex';
-      shareUrl = spotifyLink.href;
       shareText = artist ? artist + ' \u2013 ' + title : title;
     } else {
-      spotifyLink.style.display = 'none';
+      searchBtn.style.display = 'none';
       shareBtn.style.display = 'none';
-      shareUrl = '';
+      searchQuery = '';
     }
   }
 
-  // Share the current song as a Spotify link, so nobody has to look it up by hand. Uses the
-  // phone's share sheet when there is one, otherwise copies the text to the clipboard.
-  let shareUrl = '';
+  // "Search with..." popup: one row per service, each opening a search for the current song.
+  const SEARCH_SERVICES = [
+    { name: 'Spotify',       url: q => 'https://open.spotify.com/search/' + encodeURIComponent(q) },
+    { name: 'YouTube',       url: q => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q) },
+    { name: 'YouTube Music', url: q => 'https://music.youtube.com/search?q=' + encodeURIComponent(q) },
+    { name: 'SoundCloud',    url: q => 'https://soundcloud.com/search?q=' + encodeURIComponent(q) },
+    { name: 'Apple Music',   url: q => 'https://music.apple.com/us/search?term=' + encodeURIComponent(q) },
+    { name: 'Bandcamp',      url: q => 'https://bandcamp.com/search?q=' + encodeURIComponent(q) }
+  ];
+  let searchQuery = '';
+  const searchOverlay = document.getElementById('searchOverlay');
+  const searchOptions = document.getElementById('searchOptions');
+  const searchSong = document.getElementById('searchSong');
+
+  // The same picker serves both buttons: "search" opens the service's search page, "share"
+  // hands that service's link to the phone's share sheet (or copies it).
+  let searchMode = 'search';
+
+  // Apple's web search page can come up blank, so ask the public iTunes Search API for the
+  // track and link straight to it. Returns null when it finds nothing or the lookup fails.
+  async function lookupAppleMusic(q){
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 4000);
+      const res = await fetch('https://itunes.apple.com/search?media=music&entity=song&limit=1&term=' + encodeURIComponent(q), { signal: ctl.signal });
+      clearTimeout(timer);
+      if(!res.ok) return null;
+      const data = await res.json();
+      const hit = data.results && data.results[0];
+      return hit && hit.trackViewUrl ? hit.trackViewUrl : null;
+    } catch(e){ return null; }
+  }
+
+  function openPicker(mode){
+    if(!searchQuery) return;
+    searchMode = mode;
+    document.getElementById('searchTitle').textContent = mode === 'share' ? 'Share link to\u2026' : 'Search with\u2026';
+    searchSong.textContent = shareText || searchQuery;
+    searchOptions.innerHTML = '';
+    SEARCH_SERVICES.forEach(svc => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = svc.url(searchQuery);
+      a.textContent = svc.name;
+      if(svc.name === 'Apple Music'){
+        const q = searchQuery;
+        lookupAppleMusic(q).then(url => { if(url && q === searchQuery) a.href = url; });
+      }
+      if(mode === 'share'){
+        a.addEventListener('click', (e) => { e.preventDefault(); closeSearch(); shareLink(a.href); });
+      } else {
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.addEventListener('click', closeSearch);
+      }
+      li.appendChild(a);
+      searchOptions.appendChild(li);
+    });
+    searchOverlay.classList.add('open');
+  }
+  function closeSearch(){ searchOverlay.classList.remove('open'); }
+
+  searchBtn.addEventListener('click', () => openPicker('search'));
+  document.getElementById('searchClose').addEventListener('click', closeSearch);
+  document.addEventListener('click', (e) => {
+    if(searchOverlay.classList.contains('open') && !searchOverlay.contains(e.target) && !e.target.closest('#searchBtn, #shareBtn')) closeSearch();
+  });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeSearch(); });
+
+  // Share the current song as a link to the chosen service, so nobody has to look it up by hand.
+  // Uses the phone's share sheet when there is one, otherwise copies the text to the clipboard.
   let shareText = '';
   let shareLabelTimer = null;
 
@@ -1408,21 +1528,22 @@
     shareLabelTimer = setTimeout(() => { shareLabel.textContent = 'Share'; }, 2000);
   }
 
-  shareBtn.addEventListener('click', async () => {
-    if(!shareUrl) return;
+  async function shareLink(url){
     if(navigator.share){
       try {
-        await navigator.share({ title: shareText, text: shareText, url: shareUrl });
+        await navigator.share({ title: shareText, text: shareText, url: url });
       } catch(e){ /* sheet dismissed */ }
       return;
     }
     try {
-      await navigator.clipboard.writeText(shareText + '\n' + shareUrl);
+      await navigator.clipboard.writeText(shareText + '\n' + url);
       flashShareLabel('Copied');
     } catch(e){
       flashShareLabel('Copy failed');
     }
-  });
+  }
+
+  shareBtn.addEventListener('click', () => openPicker('share'));
 
   async function fetchFipNow(id){
     const res = await fetch('https://api.radiofrance.fr/livemeta/pull/' + id);
