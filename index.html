@@ -303,6 +303,27 @@
     text-decoration: none;
   }
   .spotifyLink svg{ width: 12px; height: 12px; }
+  .trackActions{
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+  }
+  .shareBtn{
+    display: none;
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    align-items: center;
+    gap: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: calc(11px * var(--font-scale));
+    letter-spacing: 0.03em;
+    color: var(--amber);
+  }
+  .shareBtn svg{ width: 12px; height: 12px; }
 
   .tabsWrap{
     overflow-x: auto;
@@ -637,10 +658,16 @@
           <div class="trackText">
             <p class="trackTitle" id="trackTitle"></p>
             <p class="trackArtist" id="trackArtist"></p>
-            <a class="spotifyLink" id="spotifyLink" href="#" target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.4.1-.7-.1-.8-.5-.1-.4.1-.7.5-.8 4-.9 7.5-.5 10.3 1.2.3.2.4.6.2.9zm1.2-2.7c-.2.3-.7.5-1 .3-2.9-1.8-7.3-2.3-10.7-1.3-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.9-1.2 8.7-.6 12 1.5.4.2.5.7.2 1zm.1-2.8C14.3 8.8 8.9 8.6 5.7 9.6c-.5.1-1-.2-1.1-.6-.1-.5.2-1 .6-1.1 3.7-1.1 9.7-.9 13.5 1.4.4.3.6.9.3 1.3-.3.4-.9.5-1.3.3z"></path></svg>
-              Search on Spotify
-            </a>
+            <div class="trackActions">
+              <a class="spotifyLink" id="spotifyLink" href="#" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.4.1-.7-.1-.8-.5-.1-.4.1-.7.5-.8 4-.9 7.5-.5 10.3 1.2.3.2.4.6.2.9zm1.2-2.7c-.2.3-.7.5-1 .3-2.9-1.8-7.3-2.3-10.7-1.3-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.9-1.2 8.7-.6 12 1.5.4.2.5.7.2 1zm.1-2.8C14.3 8.8 8.9 8.6 5.7 9.6c-.5.1-1-.2-1.1-.6-.1-.5.2-1 .6-1.1 3.7-1.1 9.7-.9 13.5 1.4.4.3.6.9.3 1.3-.3.4-.9.5-1.3.3z"></path></svg>
+                Search on Spotify
+              </a>
+              <button class="shareBtn" id="shareBtn" type="button" aria-label="Share this song">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path><path d="M16 6l-4-4-4 4"></path><path d="M12 2v13"></path></svg>
+                <span id="shareLabel">Share</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1011,6 +1038,8 @@
   const trackArtistEl = document.getElementById('trackArtist');
   const artworkImg = document.getElementById('artworkImg');
   const spotifyLink = document.getElementById('spotifyLink');
+  const shareBtn = document.getElementById('shareBtn');
+  const shareLabel = document.getElementById('shareLabel');
 
   function pad(n){ return String(n).padStart(2, '0'); }
 
@@ -1297,6 +1326,7 @@
     trackCard.style.display = 'none';
     artworkImg.style.display = 'none';
     spotifyLink.style.display = 'none';
+    shareBtn.style.display = 'none';
   }
 
   function showTrackCard(title, artist, coverUrl, spotifyQuery){
@@ -1313,11 +1343,43 @@
     if(spotifyQuery){
       spotifyLink.href = 'https://open.spotify.com/search/' + encodeURIComponent(spotifyQuery);
       spotifyLink.style.display = 'inline-flex';
+      shareBtn.style.display = 'inline-flex';
+      shareUrl = spotifyLink.href;
+      shareText = artist ? artist + ' \u2013 ' + title : title;
     } else {
       spotifyLink.style.display = 'none';
+      shareBtn.style.display = 'none';
     }
     trackCard.style.display = 'flex';
   }
+
+  // Share the current song as a Spotify link, so nobody has to look it up by hand. Uses the
+  // phone's share sheet when there is one, otherwise copies the text to the clipboard.
+  let shareUrl = '';
+  let shareText = '';
+  let shareLabelTimer = null;
+
+  function flashShareLabel(text){
+    shareLabel.textContent = text;
+    clearTimeout(shareLabelTimer);
+    shareLabelTimer = setTimeout(() => { shareLabel.textContent = 'Share'; }, 2000);
+  }
+
+  shareBtn.addEventListener('click', async () => {
+    if(!shareUrl) return;
+    if(navigator.share){
+      try {
+        await navigator.share({ title: shareText, text: shareText, url: shareUrl });
+      } catch(e){ /* sheet dismissed */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(shareText + '\n' + shareUrl);
+      flashShareLabel('Copied');
+    } catch(e){
+      flashShareLabel('Copy failed');
+    }
+  });
 
   async function fetchFipNow(id){
     const res = await fetch('https://api.radiofrance.fr/livemeta/pull/' + id);
