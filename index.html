@@ -910,6 +910,9 @@
   let currentPlayUrl = null; // the exact URL actually loaded — needed for pool stations, which have no s.url
   const MAX_RECONNECT_ATTEMPTS = 6;
   const STUCK_BUFFERING_MS = 8000;
+  const CONNECT_TIMEOUT_MS = 8000;
+  const HEALTHY_PLAY_MS = 10000; // how long audio must run before a blip stops counting against the retry budget
+  let healthyTimer = null;
   // HLS (.m3u8) streams in Safari do their own segment fetching and rebuffering, and on
   // cellular the first segments can take a while — restarting at 8s just throws away
   // progress and starts the slow part over, so give them much longer before intervening.
@@ -955,6 +958,16 @@
   function clearRecoveryTimers(){
     if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
     if(waitingTimer){ clearTimeout(waitingTimer); waitingTimer = null; }
+  }
+
+  // A server that accepts the connection but never sends audio (SomaFM does this when a node
+  // is overloaded) fires neither 'error' nor a reliable 'waiting'/'stalled', so nothing above
+  // would ever notice. Arm this right after every (re)load: if audio isn't actually advancing
+  // by then, force the next reconnect attempt instead of sitting on "Buffering…".
+  function armConnectWatchdog(){
+    if(waitingTimer){ clearTimeout(waitingTimer); }
+    const ms = isHls(currentPlayUrl) ? HLS_STUCK_BUFFERING_MS : CONNECT_TIMEOUT_MS;
+    waitingTimer = scheduleRecovery(ms, () => { waitingTimer = null; attemptReconnect(); });
   }
 
   // ---------- Data usage estimate ----------
@@ -1224,10 +1237,12 @@
     audio.play().catch(() => {
       statusEl.textContent = "Couldn't connect — try another preset";
     });
+    armConnectWatchdog();
   }
 
   function attemptReconnect(){
     clearRecoveryTimers();
+    clearTimeout(healthyTimer);
     if(!userWantsPlaying || currentIndex === null) return;
     if(reconnectAttempts >= MAX_RECONNECT_ATTEMPTS){
       statusEl.textContent = "Connection lost — tap play to retry";
@@ -1260,6 +1275,7 @@
     audio.play().catch(() => {
       reconnectTimer = setTimeout(attemptReconnect, 2500);
     });
+    armConnectWatchdog();
   }
 
   function fadeVolumeTo(target, seconds, onComplete){
@@ -1588,7 +1604,11 @@
     statusEl.textContent = '';
     updatePlayIcon(true);
     liveIndicator.classList.add('on');
-    reconnectAttempts = 0;
+    // SomaFM sends a short burst of audio on connect and can then stall, firing 'playing'
+    // every time — resetting the budget here would loop buffer→reconnect forever. Only
+    // forgive earlier failures once audio has actually kept running for a while.
+    clearTimeout(healthyTimer);
+    healthyTimer = setTimeout(() => { reconnectAttempts = 0; }, HEALTHY_PLAY_MS);
     clearRecoveryTimers();
     if(currentIndex !== null){
       const s = stations[currentIndex];
@@ -1603,6 +1623,7 @@
   });
 
   audio.addEventListener('waiting', () => {
+    clearTimeout(healthyTimer);
     statusEl.textContent = 'Buffering…';
     // Some streams keep trickling data too slowly to play (not a hard "stalled" fetch,
     // just a chronic buffer underrun) — the browser alone can sit in this state
