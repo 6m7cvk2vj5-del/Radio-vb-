@@ -207,7 +207,7 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    .settingsOverlay, .settingsPanel{ transition: none; }
+    .settingsOverlay, .settingsPanel, .pickerPop{ transition: none; }
   }
 
   main{
@@ -252,6 +252,7 @@
     background: var(--panel);
     border: 1px solid var(--hairline);
     border-radius: 12px;
+    position: relative;
   }
   .trackInfo{
     display: flex;
@@ -323,27 +324,61 @@
     color: var(--amber);
   }
   .shareBtn svg, .searchBtn svg{ width: 12px; height: 12px; }
-  .searchOptions{ list-style: none; margin: 0; padding: 0; }
-  .searchOptions a{
+  /* The service picker sits on top of the player card, covering the song and controls. */
+  .pickerPop{
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    z-index: 20;
+    padding: 12px 12px 14px;
+    background: var(--panel);
+    border: 1px solid var(--amber);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    opacity: 0;
+    transform: scale(0.97);
+    transform-origin: top center;
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  .pickerPop.open{ opacity: 1; transform: none; pointer-events: auto; }
+  .pickerHead{
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--hairline);
     font-size: calc(14px * var(--font-scale));
+    font-weight: 500;
     color: var(--text);
-    text-decoration: none;
   }
-  .searchOptions li:last-child a{ border-bottom: none; }
-  .searchOptions a::after{ content: '\2197'; color: var(--text-dim); }
+  .pickerHead .settingsClose{ font-size: calc(14px * var(--font-scale)); }
   .searchSong{
-    margin: -8px 0 6px;
-    font-size: calc(12px * var(--font-scale));
+    margin: 6px 0 12px !important;
+    font-size: calc(11px * var(--font-scale));
     color: var(--text-dim);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .searchOptions{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .searchOptions a{
+    display: block;
+    padding: 10px 8px;
+    text-align: center;
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: 9px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: calc(12px * var(--font-scale));
+    color: var(--amber);
+    text-decoration: none;
+  }
+  .searchOptions a:active{ background: var(--amber); color: var(--bg); }
 
   .tabsWrap{
     overflow-x: auto;
@@ -665,23 +700,20 @@
       </div>
     </div>
 
-    <div class="settingsOverlay" id="searchOverlay">
-      <div class="settingsPanel" role="dialog" aria-labelledby="searchTitle">
-        <div class="settingsHeader">
-          <span id="searchTitle">Search with&hellip;</span>
-          <button class="settingsClose" id="searchClose" aria-label="Close">✕</button>
-        </div>
-        <p class="searchSong" id="searchSong"></p>
-        <ul class="searchOptions" id="searchOptions"></ul>
-      </div>
-    </div>
-
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
         <p id="stationSub"></p>
 
         <div class="trackCard empty" id="trackCard">
+          <div class="pickerPop" id="searchOverlay" role="dialog" aria-labelledby="searchTitle">
+            <div class="pickerHead">
+              <span id="searchTitle">Search with&hellip;</span>
+              <button class="settingsClose" id="searchClose" aria-label="Close">✕</button>
+            </div>
+            <p class="searchSong" id="searchSong"></p>
+            <ul class="searchOptions" id="searchOptions"></ul>
+          </div>
           <div class="trackInfo">
             <div class="artwork" id="artwork">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
@@ -1461,9 +1493,10 @@
 
   searchBtn.addEventListener('click', () => openPicker('search'));
   document.getElementById('searchClose').addEventListener('click', closeSearch);
-  searchOverlay.addEventListener('click', (e) => {
-    if(e.target === searchOverlay) closeSearch();
+  document.addEventListener('click', (e) => {
+    if(searchOverlay.classList.contains('open') && !searchOverlay.contains(e.target) && !e.target.closest('#searchBtn, #shareBtn')) closeSearch();
   });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeSearch(); });
 
   // Share the current song as a link to the chosen service, so nobody has to look it up by hand.
   // Uses the phone's share sheet when there is one, otherwise copies the text to the clipboard.
