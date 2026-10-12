@@ -920,6 +920,17 @@
   const HLS_STALLED_MS = 15000;
   function isHls(url){ return /\.m3u8(\?|$)/i.test(url || ''); }
 
+  // SomaFM serves every channel from ice1–ice6 and their own site/playlists spread listeners
+  // across them. We only ever pointed at ice1, so when that node is overloaded or unreachable
+  // from a given network the stream buffers forever even though somafm.com itself works.
+  // Each reconnect moves to the next node. The relay's allow-list only knows ice1 (it is read
+  // from the station list), so song-title lookups always ask about the ice1 URL.
+  const SOMA_NODE = /^(https:\/\/ice)([1-6])(\.somafm\.com\/)/;
+  function nextSomaNode(url){
+    return (url || '').replace(SOMA_NODE, (m, a, n, b) => a + ((+n % 6) + 1) + b);
+  }
+  function canonicalSomaUrl(url){ return (url || '').replace(SOMA_NODE, (m, a, n, b) => a + '1' + b); }
+
   // Optional relay (a small Cloudflare Worker you own — see docs/relay-setup.md). It lets Dial
   // read track info that browsers block (Radio Paradise) and titles embedded inside live
   // streams (ICY metadata). Leave empty to turn this off; everything else works without it.
@@ -1254,7 +1265,8 @@
     // it has to reconnect at the current live edge, so we bust any stale cached request.
     // Uses currentPlayUrl rather than s.url: pool-based stations (Singing Bowls, Forest
     // Sounds) have no url on the station object itself, only on the picked pool track.
-    const base = currentPlayUrl || stations[currentIndex].url;
+    const base = nextSomaNode(currentPlayUrl || stations[currentIndex].url);
+    currentPlayUrl = base;
     const hls = isHls(base);
     const sep = base.includes('?') ? '&' : '?';
     // But a finite on-demand file (a talk, a meditation) very much has a "where you were" —
@@ -1553,7 +1565,7 @@
   }
 
   async function fetchIcyNow(station){
-    const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/icy?u=' + encodeURIComponent(currentPlayUrl));
+    const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/icy?u=' + encodeURIComponent(canonicalSomaUrl(currentPlayUrl)));
     if(!res.ok) return null;
     const data = await res.json();
     const c = data && cleanIcyTitle(station, data.raw || data.title);
