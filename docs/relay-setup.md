@@ -2,8 +2,9 @@
 
 The relay is a ~150-line script (`relay/worker.js`) that runs for free on Cloudflare Workers.
 It lets Dial show song info for stations the browser can't read directly (Radio Paradise, and
-any station that puts the song title inside its audio stream). It only talks to the stations
-listed in the script and only answers Dial's own page, so it is not an open proxy.
+any station that puts the song title inside its audio stream). It only talks to hosts that appear
+as station addresses in the live Dial page and only answers Dial's own page, so it is not an open
+proxy.
 
 ## Set up (once, about 10 minutes; easier on a computer)
 
@@ -25,8 +26,15 @@ Cloudflare's dashboard wording changes now and then; if a button is named differ
 ## Is it ongoing?
 
 No. It runs by itself on the free plan (100,000 requests a day; Dial uses a few thousand at most).
-You only touch it again if `relay/worker.js` changes (for example a new station host is added):
-paste the new version into the same Worker and press Deploy.
+
+Adding stations to Dial needs no change to the relay. It re-reads the published Dial page at most
+every 10 minutes and allows whatever station hosts are listed there, so a new station works once
+GitHub Pages has published it and the relay's list refreshes (allow about 10-15 minutes).
+
+You only touch the Worker again if `relay/worker.js` itself changes: paste the new version into
+the same Worker and press Deploy. The two things hardcoded in it are the Dial page address
+(`PAGE_URL`) and the one extra JSON host (`api.radioparadise.com`, in `JSON_HOSTS`). If the Dial
+page ever moves to a new address, or you want another JSON source, those are what to edit.
 
 ## Limits
 

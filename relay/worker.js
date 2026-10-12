@@ -5,13 +5,17 @@
 //                                   stream (ICY metadata) and returns {raw, artist, title}
 //   GET /json?u=<https json url>    passes a JSON response through with CORS allowed
 //
-// It is NOT an open proxy: it only talks to the hosts listed below, and only answers browsers
-// loading Dial from ORIGIN. See docs/relay-setup.md for the one-time setup.
+// It is NOT an open proxy: it only talks to hosts that appear as station URLs in the live Dial
+// page (PAGE_URL), so adding a station to index.html needs no change here, and it only answers
+// browsers loading Dial from ORIGIN. See docs/relay-setup.md for the one-time setup.
 
 const ORIGIN = 'https://6m7cvk2vj5-del.github.io';
 
-// Live-stream hosts (host[:port]) that may be read for ICY metadata.
-const STREAM_HOSTS = [
+const PAGE_URL = 'https://6m7cvk2vj5-del.github.io/Radio-vb-/';
+const HOSTS_TTL_MS = 10 * 60 * 1000;   // re-read the page at most every 10 minutes
+
+// Fallback only: used if the live page can't be read and nothing is cached yet.
+const FALLBACK_STREAM_HOSTS = [
   'icecast.radiofrance.fr',
   'stream.radioparadise.com',
   'ice1.somafm.com',
@@ -34,6 +38,30 @@ const STREAM_HOSTS = [
   'nature-rex.radioca.st',
   'radio.moss.garden',
 ];
+
+let hostCache = { hosts: null, at: 0 };
+
+// Every host[:port] that appears as a station `url:` / `lowUrl:` in the live Dial page.
+async function allowedStreamHosts() {
+  const now = Date.now();
+  if (hostCache.hosts && now - hostCache.at < HOSTS_TTL_MS) return hostCache.hosts;
+  try {
+    const res = await fetch(PAGE_URL);
+    if (res.ok) {
+      const html = await res.text();
+      const hosts = new Set();
+      for (const m of html.matchAll(/\b(?:url|lowUrl)\s*:\s*['"](https:\/\/[^'"]+)['"]/g)) {
+        try { hosts.add(new URL(m[1]).host); } catch (e) {}
+      }
+      if (hosts.size >= 5) {            // sanity check: a real station list, not an error page
+        hostCache = { hosts, at: now };
+        return hosts;
+      }
+    }
+  } catch (e) {}
+  if (hostCache.hosts) return hostCache.hosts;          // stale list beats none
+  return new Set(FALLBACK_STREAM_HOSTS);
+}
 
 // JSON endpoints that may be passed through.
 const JSON_HOSTS = ['api.radioparadise.com'];
@@ -157,7 +185,7 @@ export default {
 
     try {
       if (url.pathname === '/icy') {
-        if (!STREAM_HOSTS.includes(target.host)) return reply({ error: 'host not allowed' }, 403);
+        if (!(await allowedStreamHosts()).has(target.host)) return reply({ error: 'host not allowed' }, 403);
         const info = await readIcy(target.toString());
         return reply(info || { raw: null, artist: null, title: null }, 200);
       }
