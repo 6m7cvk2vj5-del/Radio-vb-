@@ -241,16 +241,24 @@
 
   #stationSub{ min-height: 1.4em; }
 
+  /* One player card: song info on top, transport controls tucked underneath. It is always
+     shown (with a placeholder) so the page doesn't jump when song info comes and goes. */
   .trackCard{
-    display: none;
-    align-items: center;
-    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     margin-top: 14px;
-    padding: 10px;
+    padding: 10px 10px 12px;
     background: var(--panel);
     border: 1px solid var(--hairline);
     border-radius: 12px;
   }
+  .trackInfo{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .trackCard.empty .trackTitle{ color: var(--text-dim); font-weight: 400; }
   .artwork{
     width: 52px;
     height: 52px;
@@ -291,6 +299,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0 0 6px !important;
+    min-height: 1.3em;
   }
   .spotifyLink{
     display: none;
@@ -304,6 +313,7 @@
   }
   .spotifyLink svg{ width: 12px; height: 12px; }
   .trackActions{
+    min-height: calc(18px * var(--font-scale));
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -373,14 +383,14 @@
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    padding-bottom: 6px;
+    padding-bottom: 0;
   }
 
   .controls{
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 22px;
+    gap: 18px;
   }
 
   .scrubber{
@@ -455,8 +465,8 @@
 
   .skipBtn{
     appearance: none;
-    width: 46px;
-    height: 46px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     background: transparent;
     border: 1px solid var(--hairline);
@@ -473,10 +483,10 @@
 
   .playBtn{
     appearance: none;
-    width: 72px;
-    height: 72px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    background: var(--panel);
+    background: var(--panel-2);
     border: 1px solid var(--hairline);
     display: flex;
     align-items: center;
@@ -485,7 +495,7 @@
     cursor: pointer;
     transition: border-color .25s ease, box-shadow .25s ease;
   }
-  .playBtn svg{ width: 24px; height: 24px; }
+  .playBtn svg{ width: 22px; height: 22px; }
   .playBtn:disabled{ opacity: 0.4; }
   .playBtn.playing{
     border-color: var(--amber);
@@ -650,24 +660,46 @@
         <h1 id="stationName">Pick a preset</h1>
         <p id="stationSub"></p>
 
-        <div class="trackCard" id="trackCard">
-          <div class="artwork" id="artwork">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-            <img id="artworkImg" alt="">
-          </div>
-          <div class="trackText">
-            <p class="trackTitle" id="trackTitle"></p>
-            <p class="trackArtist" id="trackArtist"></p>
-            <div class="trackActions">
-              <a class="spotifyLink" id="spotifyLink" href="#" target="_blank" rel="noopener">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.4.1-.7-.1-.8-.5-.1-.4.1-.7.5-.8 4-.9 7.5-.5 10.3 1.2.3.2.4.6.2.9zm1.2-2.7c-.2.3-.7.5-1 .3-2.9-1.8-7.3-2.3-10.7-1.3-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.9-1.2 8.7-.6 12 1.5.4.2.5.7.2 1zm.1-2.8C14.3 8.8 8.9 8.6 5.7 9.6c-.5.1-1-.2-1.1-.6-.1-.5.2-1 .6-1.1 3.7-1.1 9.7-.9 13.5 1.4.4.3.6.9.3 1.3-.3.4-.9.5-1.3.3z"></path></svg>
-                Search on Spotify
-              </a>
-              <button class="shareBtn" id="shareBtn" type="button" aria-label="Share this song">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path><path d="M16 6l-4-4-4 4"></path><path d="M12 2v13"></path></svg>
-                <span id="shareLabel">Share</span>
-              </button>
+        <div class="trackCard empty" id="trackCard">
+          <div class="trackInfo">
+            <div class="artwork" id="artwork">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+              <img id="artworkImg" alt="">
             </div>
+            <div class="trackText">
+              <p class="trackTitle" id="trackTitle">Nothing playing</p>
+              <p class="trackArtist" id="trackArtist"></p>
+              <div class="trackActions">
+                <a class="spotifyLink" id="spotifyLink" href="#" target="_blank" rel="noopener">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.4.1-.7-.1-.8-.5-.1-.4.1-.7.5-.8 4-.9 7.5-.5 10.3 1.2.3.2.4.6.2.9zm1.2-2.7c-.2.3-.7.5-1 .3-2.9-1.8-7.3-2.3-10.7-1.3-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.9-1.2 8.7-.6 12 1.5.4.2.5.7.2 1zm.1-2.8C14.3 8.8 8.9 8.6 5.7 9.6c-.5.1-1-.2-1.1-.6-.1-.5.2-1 .6-1.1 3.7-1.1 9.7-.9 13.5 1.4.4.3.6.9.3 1.3-.3.4-.9.5-1.3.3z"></path></svg>
+                  Search on Spotify
+                </a>
+                <button class="shareBtn" id="shareBtn" type="button" aria-label="Share this song">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path><path d="M16 6l-4-4-4 4"></path><path d="M12 2v13"></path></svg>
+                  <span id="shareLabel">Share</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="playRow">
+            <div class="scrubber" id="scrubber">
+              <input type="range" class="scrubRange" id="scrubRange" min="0" max="0" step="1" value="0" aria-label="Seek">
+              <div class="scrubMeta">
+                <span id="scrubCurrent">0:00</span>
+                <div class="scrubSkipBtns">
+                  <button class="scrubSkipBtn" id="scrubBack15" type="button" aria-label="Back 15 seconds">‹‹ 15</button>
+                  <button class="scrubSkipBtn" id="scrubFwd15" type="button" aria-label="Forward 15 seconds">15 ››</button>
+                </div>
+                <span id="scrubDuration">0:00</span>
+              </div>
+            </div>
+            <div class="controls">
+              <button class="skipBtn" id="shuffleBtn" aria-label="Shuffle channel"></button>
+              <button class="skipBtn" id="prevBtn" disabled aria-label="Previous channel"></button>
+              <button class="playBtn" id="playBtn" disabled aria-label="Play"></button>
+              <button class="skipBtn" id="nextBtn" disabled aria-label="Next channel"></button>
+            </div>
+            <p class="status" id="status"></p>
           </div>
         </div>
       </div>
@@ -676,27 +708,6 @@
         <div class="tabs" id="tabs">
           <div class="tabUnderline" id="tabUnderline"></div>
         </div>
-      </div>
-
-      <div class="playRow">
-        <div class="scrubber" id="scrubber">
-          <input type="range" class="scrubRange" id="scrubRange" min="0" max="0" step="1" value="0" aria-label="Seek">
-          <div class="scrubMeta">
-            <span id="scrubCurrent">0:00</span>
-            <div class="scrubSkipBtns">
-              <button class="scrubSkipBtn" id="scrubBack15" type="button" aria-label="Back 15 seconds">‹‹ 15</button>
-              <button class="scrubSkipBtn" id="scrubFwd15" type="button" aria-label="Forward 15 seconds">15 ››</button>
-            </div>
-            <span id="scrubDuration">0:00</span>
-          </div>
-        </div>
-        <div class="controls">
-          <button class="skipBtn" id="shuffleBtn" aria-label="Shuffle channel"></button>
-          <button class="skipBtn" id="prevBtn" disabled aria-label="Previous channel"></button>
-          <button class="playBtn" id="playBtn" disabled aria-label="Play"></button>
-          <button class="skipBtn" id="nextBtn" disabled aria-label="Next channel"></button>
-        </div>
-        <p class="status" id="status"></p>
       </div>
     </main>
 
@@ -1181,7 +1192,7 @@
     stationName.textContent = s.name;
     stationSub.textContent = networkLabel(s.network) + ' · ' + s.genre;
     playBtn.disabled = false;
-    hideTrackCard();
+    hideTrackCard(hasNowSource(s) ? 'Waiting for song info\u2026' : 'Song info not available');
     if(activeNetwork !== s.network){ selectNetwork(s.network); }
     else { renderPresetList(); updateSkipButtons(); }
     playCurrent();
@@ -1322,17 +1333,21 @@
 
   // ---------- Now playing metadata ----------
 
-  function hideTrackCard(){
-    trackCard.style.display = 'none';
+  // The card stays on screen; when there's no song to show it falls back to a placeholder.
+  function hideTrackCard(message){
+    trackCard.classList.add('empty');
+    trackTitleEl.textContent = message || 'Nothing playing';
+    trackArtistEl.textContent = '';
     artworkImg.style.display = 'none';
     spotifyLink.style.display = 'none';
     shareBtn.style.display = 'none';
+    shareUrl = '';
   }
 
   function showTrackCard(title, artist, coverUrl, spotifyQuery){
+    trackCard.classList.remove('empty');
     trackTitleEl.textContent = title;
     trackArtistEl.textContent = artist || '';
-    trackArtistEl.style.display = artist ? 'block' : 'none';
     if(coverUrl){
       artworkImg.onerror = () => { artworkImg.style.display = 'none'; };
       artworkImg.onload = () => { artworkImg.style.display = 'block'; };
@@ -1349,8 +1364,8 @@
     } else {
       spotifyLink.style.display = 'none';
       shareBtn.style.display = 'none';
+      shareUrl = '';
     }
-    trackCard.style.display = 'flex';
   }
 
   // Share the current song as a Spotify link, so nobody has to look it up by hand. Uses the
@@ -1560,7 +1575,7 @@
     const poll = async () => {
       const info = await fetchNowPlaying(s);
       if(myRequestId !== npRequestId) return; // station changed while awaiting
-      if(!info || !info.title){ hideTrackCard(); return; }
+      if(!info || !info.title){ hideTrackCard('No song info right now'); return; }
       showTrackCard(info.title, info.artist, info.cover, info.spotifyQuery);
     };
     poll();
@@ -1611,7 +1626,7 @@
     updatePlayIcon(false);
     liveIndicator.classList.remove('on');
     stopNowPlayingPolling();
-    hideTrackCard();
+    hideTrackCard('Song info unavailable');
     if(userWantsPlaying){
       attemptReconnect();
     } else {
