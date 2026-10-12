@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<!-- Stream hosts see only the audio request; sending no referring address rules out hotlink checks that treat github.io differently from other origins. -->
+<meta name="referrer" content="no-referrer">
 <title>Dial</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1035,6 +1037,14 @@
     attemptReconnect();
   }, 1000);
 
+  // Shown beside reconnect messages so a failure can be read off the phone: which SomaFM node,
+  // which attempt, and the browser's own error code (2 network, 3 decode, 4 blocked/not found).
+  function debugTag(){
+    const m = (currentPlayUrl || '').match(SOMA_NODE);
+    const code = audio.error ? ' err' + audio.error.code : '';
+    return '(' + (m ? 'ice' + m[2] + ' ' : '') + 'try ' + reconnectAttempts + '/' + MAX_RECONNECT_ATTEMPTS + code + ')';
+  }
+
   function clearRecoveryTimers(){
     if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
     if(waitingTimer){ clearTimeout(waitingTimer); waitingTimer = null; }
@@ -1328,11 +1338,11 @@
     clearTimeout(healthyTimer);
     if(!userWantsPlaying || currentIndex === null) return;
     if(reconnectAttempts >= MAX_RECONNECT_ATTEMPTS){
-      statusEl.textContent = "Connection lost — tap play to retry";
+      statusEl.textContent = "Connection lost " + debugTag() + " — tap play to retry";
       return;
     }
     reconnectAttempts++;
-    statusEl.textContent = 'Reconnecting…';
+    statusEl.textContent = 'Reconnecting… ' + debugTag();
     // Force a genuinely fresh connection — a dropped live stream can't just "resume,"
     // it has to reconnect at the current live edge, so we bust any stale cached request.
     // Uses currentPlayUrl rather than s.url: pool-based stations (Singing Bowls, Forest
