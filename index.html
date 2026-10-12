@@ -747,15 +747,15 @@
     { network:'fip', name:'FIP Nouveautés',       genre:'New releases',       url:'https://icecast.radiofrance.fr/fipnouveautes-midfi.mp3?id=radiofrance', now:{type:'fip', id:70} },
     { network:'fip', name:'FIP Sacré Français',   genre:'French chanson',     url:'https://icecast.radiofrance.fr/fipsacrefrancais-midfi.mp3?id=radiofrance' },
 
-    // Radio Paradise — its four mixes. No now-playing metadata: api.radioparadise.com sends no
-    // Access-Control-Allow-Origin header (verified blocked from github.io for now_playing,
-    // nowplaying_list_v2022 and get_block), so a browser page can't read it.
+    // Radio Paradise — its four mixes. api.radioparadise.com sends no Access-Control-Allow-Origin
+    // header (verified blocked from github.io for now_playing, nowplaying_list_v2022 and
+    // get_block), so track info goes through the relay (RELAY_URL below); without it, none shows.
     // lowUrl/lowKbps: RP's own naming scheme is "{mix}-{bitrate}"; mp3-32 is confirmed on their
     // published stream-links page, the other three mixes follow the same documented convention.
-    { network:'rp', name:'Main Mix',   genre:'Rock · eclectic',  url:'https://stream.radioparadise.com/mp3-192', lowUrl:'https://stream.radioparadise.com/mp3-32', lowKbps:32 },
-    { network:'rp', name:'Mellow Mix', genre:'Chill · acoustic', url:'https://stream.radioparadise.com/mellow-192', lowUrl:'https://stream.radioparadise.com/mellow-32', lowKbps:32 },
-    { network:'rp', name:'Rock Mix',   genre:'Rock-focused',     url:'https://stream.radioparadise.com/rock-192', lowUrl:'https://stream.radioparadise.com/rock-32', lowKbps:32 },
-    { network:'rp', name:'Global Mix', genre:'World · eclectic', url:'https://stream.radioparadise.com/world-etc-192', lowUrl:'https://stream.radioparadise.com/world-etc-32', lowKbps:32 },
+    { network:'rp', name:'Main Mix',   genre:'Rock · eclectic',  url:'https://stream.radioparadise.com/mp3-192', lowUrl:'https://stream.radioparadise.com/mp3-32', lowKbps:32, now:{type:'rp', chan:0} },
+    { network:'rp', name:'Mellow Mix', genre:'Chill · acoustic', url:'https://stream.radioparadise.com/mellow-192', lowUrl:'https://stream.radioparadise.com/mellow-32', lowKbps:32, now:{type:'rp', chan:1} },
+    { network:'rp', name:'Rock Mix',   genre:'Rock-focused',     url:'https://stream.radioparadise.com/rock-192', lowUrl:'https://stream.radioparadise.com/rock-32', lowKbps:32, now:{type:'rp', chan:2} },
+    { network:'rp', name:'Global Mix', genre:'World · eclectic', url:'https://stream.radioparadise.com/world-etc-192', lowUrl:'https://stream.radioparadise.com/world-etc-32', lowKbps:32, now:{type:'rp', chan:3} },
 
     // SomaFM — no metadata: their third-party API was officially discontinued.
     // lowUrl/lowKbps: SomaFM's FAQ confirms they publish 32k AAC-HE streams for every channel
@@ -878,6 +878,21 @@
   const HLS_STUCK_BUFFERING_MS = 20000;
   const HLS_STALLED_MS = 15000;
   function isHls(url){ return /\.m3u8(\?|$)/i.test(url || ''); }
+
+  // Optional relay (a small Cloudflare Worker you own — see docs/relay-setup.md). It lets Dial
+  // read track info that browsers block (Radio Paradise) and titles embedded inside live
+  // streams (ICY metadata). Leave empty to turn this off; everything else works without it.
+  const RELAY_URL = '';
+  const ICY_NETWORKS = ['fip', 'soma', 'nts', 'club', 'piano', 'classical', 'yoga'];
+  function icyEligible(s){
+    return !!RELAY_URL && !s.now && !s.pool && ICY_NETWORKS.includes(s.network)
+      && /^https:/.test(currentPlayUrl || '') && !isHls(currentPlayUrl);
+  }
+  function hasNowSource(s){
+    if(!s) return false;
+    if(s.now) return s.now.type !== 'rp' || !!RELAY_URL;
+    return icyEligible(s);
+  }
 
   // Safari fires 'stalled' on perfectly healthy live streams (it just means the browser paused
   // downloading because its buffer is full), and 'waiting' can precede a recovery that never
@@ -1398,8 +1413,32 @@
     return { title: title, artist: artist, cover: cover, spotifyQuery: artist + ' ' + title };
   }
 
+  async function fetchRpNow(chan){
+    const target = 'https://api.radioparadise.com/api/now_playing?chan=' + chan;
+    const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/json?u=' + encodeURIComponent(target));
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!data.title || !data.artist) return null;
+    return { title: data.title, artist: data.artist, cover: data.cover_med || data.cover, spotifyQuery: data.artist + ' ' + data.title };
+  }
+
+  // Song title embedded in the live stream itself, read by the relay. Many stations just echo
+  // their own name when no song is known — those are dropped so the card doesn't show noise.
+  async function fetchIcyNow(station){
+    const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/icy?u=' + encodeURIComponent(currentPlayUrl));
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!data || !data.title) return null;
+    const norm = t => String(t || '').trim().toLowerCase();
+    if(norm(data.title) === norm(station.name) || norm(data.raw) === norm(station.name) || norm(data.raw) === norm(networkLabel(station.network))) return null;
+    return { title: data.title, artist: data.artist, cover: null, spotifyQuery: data.artist ? data.artist + ' ' + data.title : null };
+  }
+
   async function fetchNowPlaying(station){
-    if(!station.now) return null;
+    if(!station.now){
+      if(!icyEligible(station)) return null;
+      try{ return await fetchIcyNow(station); } catch(e){ return null; }
+    }
     try{
       if(station.now.type === 'fip') return await fetchFipNow(station.now.id);
       if(station.now.type === 'nts') return await fetchNtsNow(station.now.channel);
@@ -1407,6 +1446,7 @@
       if(station.now.type === 'airtime') return await fetchAirtimeNow(station.now.host);
       if(station.now.type === 'icecast') return await fetchIcecastNow(station.now.host, station.now.mount);
       if(station.now.type === 'bbc') return await fetchBbcNow(station.now.service);
+      if(station.now.type === 'rp' && RELAY_URL) return await fetchRpNow(station.now.chan);
     } catch(e){ return null; }
     return null;
   }
@@ -1418,7 +1458,7 @@
   function startNowPlayingPolling(){
     stopNowPlayingPolling();
     const s = stations[currentIndex];
-    if(!s || !s.now){ return; }
+    if(!hasNowSource(s)){ return; }
     const myRequestId = ++npRequestId;
     const poll = async () => {
       const info = await fetchNowPlaying(s);
