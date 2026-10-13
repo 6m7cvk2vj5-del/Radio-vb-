@@ -1578,9 +1578,22 @@
   shareBtn.addEventListener('click', () => openPicker('share'));
 
   async function fetchFipNow(id){
-    const res = await fetch('https://api.radiofrance.fr/livemeta/pull/' + id);
-    if(!res.ok) return null;
-    const data = await res.json();
+    // Ask through the relay first: some networks (work VPNs, filters) block radiofrance.fr's API
+    // but let the relay through. An older relay that doesn't know this host answers 403, and a
+    // direct call then covers it.
+    const target = 'https://api.radiofrance.fr/livemeta/pull/' + id;
+    let data = null;
+    if(RELAY_URL){
+      try{
+        const r = await relayFetch('/json?u=' + encodeURIComponent(target));
+        if(r.ok) data = await r.json();
+      } catch(e){ data = null; }
+    }
+    if(!data){
+      const res = await fetch(target);
+      if(!res.ok) return null;
+      data = await res.json();
+    }
     const stepsObj = data.steps || {};
     const list = Object.values(stepsObj);
     if(!list.length) return null;

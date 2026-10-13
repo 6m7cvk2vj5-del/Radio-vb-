@@ -33,7 +33,7 @@ GitHub Pages has published it and the relay's list refreshes (allow about 10-15 
 
 You only touch the Worker again if `relay/worker.js` itself changes: paste the new version into
 the same Worker and press Deploy. The two things hardcoded in it are the Dial page address
-(`PAGE_URL`) and the one extra JSON host (`api.radioparadise.com`, in `JSON_HOSTS`). If the Dial
+(`PAGE_URL`) and the extra JSON hosts (`api.radioparadise.com` and `api.radiofrance.fr`, in `JSON_HOSTS`). If the Dial
 page ever moves to a new address, or you want another JSON source, those are what to edit.
 
 ## Limits
