@@ -66,7 +66,7 @@ async function allowedStreamHosts() {
 }
 
 // JSON endpoints that may be passed through.
-const JSON_HOSTS = ['api.radioparadise.com'];
+const JSON_HOSTS = ['api.radioparadise.com', 'api.radiofrance.fr'];
 
 // radiofrance.fr's own "recent tracks" call for a FIP webradio page. Unofficial: it is the site's
 // internal SvelteKit remote function, so the id (1wiyrg4) or the reply format may change.
