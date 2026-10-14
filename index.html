@@ -1674,17 +1674,21 @@
   }
 
   async function fetchBbcNow(serviceId){
-    const res = await fetch('https://rms.api.bbc.co.uk/v2/services/' + serviceId + '/segments/latest?experience=domestic&offset=0&limit=1');
+    const res = await fetch('https://rms.api.bbc.co.uk/v2/services/' + serviceId + '/segments/latest?experience=domestic&offset=0&limit=4');
     if(!res.ok) return null;
     const data = await res.json();
-    const item = data.data && data.data[0];
-    if(!item || item.segment_type !== 'music') return null;
-    const artist = item.titles && item.titles.primary;
-    const title = item.titles && item.titles.secondary;
-    if(!artist || !title) return null;
+    const items = (data.data || []).filter(it => it && it.segment_type !== 'speech' && it.titles && it.titles.primary && it.titles.secondary);
+    // Prefer the segment flagged as playing now; otherwise the newest (list is newest first).
+    const item = items.find(it => it.offset && it.offset.now_playing) || items[0];
+    if(!item) return null;
+    // Pop/dance: primary = artist, secondary = track. Radio 3 classical: primary = composer,
+    // secondary = work, with the performers in tertiary (shown as extra artist info).
+    const artist = item.titles.primary;
+    const title = item.titles.secondary;
+    const extra = item.titles.tertiary;
     let cover = item.image_url;
     if(cover) cover = cover.replace('{recipe}', '400x400');
-    return { title: title, artist: artist, cover: cover, spotifyQuery: artist + ' ' + title };
+    return { title: title, artist: extra ? artist + ' · ' + extra : artist, cover: cover, spotifyQuery: artist + ' ' + title };
   }
 
   // Latest track on a FIP webradio that has no livemeta ID, read by the relay from
