@@ -179,14 +179,25 @@ async function readIcy(url, trace) {
   }
 }
 
+// Returns { data } on success or { error } describing why not (shown to whoever opens the URL).
 async function passJson(url) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: ctrl.signal });
+    const headers = { Accept: 'application/json' };
+    if (new URL(url).host === 'rms.api.bbc.co.uk') {
+      // BBC's API turns away bare server requests; look like their own site's browser calls.
+      headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+      headers['Origin'] = 'https://www.bbc.co.uk';
+      headers['Referer'] = 'https://www.bbc.co.uk/';
+    }
+    const res = await fetch(url, { headers, signal: ctrl.signal });
     const text = await res.text();
-    if (!res.ok || text.length > 200000) return null;
-    return JSON.parse(text);
+    if (!res.ok) return { error: 'upstream status ' + res.status, body: text.slice(0, 200) };
+    if (text.length > 200000) return { error: 'upstream reply too large' };
+    return { data: JSON.parse(text.replace(/^\uFEFF/, '')) };
+  } catch (e) {
+    return { error: 'upstream ' + (e && e.name || 'error') + ': ' + String(e && e.message || '').slice(0, 120) };
   } finally {
     clearTimeout(timer);
   }
@@ -300,8 +311,8 @@ export default {
       }
       if (url.pathname === '/json') {
         if (!JSON_HOSTS.includes(target.host)) return reply({ error: 'host not allowed' }, 403);
-        const data = await passJson(target.toString());
-        return data ? reply(data, 200) : reply({ error: 'upstream failed' }, 502);
+        const out = await passJson(target.toString());
+        return out.data ? reply(out.data, 200) : reply({ error: 'upstream failed', detail: out.error, body: out.body }, 502);
       }
       return reply({ error: 'not found' }, 404);
     } catch (e) {
