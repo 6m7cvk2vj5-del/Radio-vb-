@@ -1673,26 +1673,32 @@
     return { title: title, artist: artist, cover: null, spotifyQuery: artist + ' ' + title };
   }
 
+  // Why the last BBC lookup came back empty, shown on the card so a failure can be diagnosed on a phone.
+  let bbcDebug = '';
   async function fetchBbcNow(serviceId){
     // BBC's API may not allow calls straight from the browser (CORS), so ask through the relay
     // first; an older relay that doesn't know this host answers 403 and a direct call covers it.
     const target = 'https://rms.api.bbc.co.uk/v2/services/' + serviceId + '/segments/latest?experience=domestic&offset=0&limit=4';
     let data = null;
+    const why = [];
     if(RELAY_URL){
       try{
         const r = await relayFetch('/json?u=' + encodeURIComponent(target));
-        if(r.ok) data = await r.json();
-      } catch(e){ data = null; }
+        if(r.ok) data = await r.json(); else why.push('relay ' + r.status);
+      } catch(e){ why.push('relay ' + (e && e.name || 'error')); }
     }
     if(!data){
-      const res = await fetch(target);
-      if(!res.ok) return null;
-      data = await res.json();
+      try{
+        const res = await fetch(target);
+        if(res.ok) data = await res.json(); else why.push('direct ' + res.status);
+      } catch(e){ why.push('direct ' + (e && e.name || 'error')); }
     }
+    bbcDebug = why.join(', ');
+    if(!data) return null;
     const items = (data.data || []).filter(it => it && it.segment_type !== 'speech' && it.titles && it.titles.primary && it.titles.secondary);
     // Prefer the segment flagged as playing now; otherwise the newest (list is newest first).
     const item = items.find(it => it.offset && it.offset.now_playing) || items[0];
-    if(!item) return null;
+    if(!item){ bbcDebug = (why.join(', ') + ' no usable segment').trim(); return null; }
     // Pop/dance: primary = artist, secondary = track. Radio 3 classical: primary = composer,
     // secondary = work, with the performers in tertiary (shown as extra artist info).
     const artist = item.titles.primary;
@@ -1790,7 +1796,7 @@
     const poll = async () => {
       const info = await fetchNowPlaying(s);
       if(myRequestId !== npRequestId) return; // station changed while awaiting
-      if(!info || !info.title){ hideTrackCard('No song info right now'); return; }
+      if(!info || !info.title){ hideTrackCard('No song info right now' + (s.now && s.now.type === 'bbc' && bbcDebug ? ' (' + bbcDebug + ')' : '')); return; }
       showTrackCard(info.title, info.artist, info.cover, info.spotifyQuery);
     };
     poll();
