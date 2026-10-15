@@ -778,6 +778,7 @@
     { id: 'soma', label: 'SomaFM',         place: 'San Francisco' },
     { id: 'nts',  label: 'NTS',            place: 'London' },
     { id: 'club', label: 'Club',           place: 'Various' },
+    { id: 'trance', label: 'Trance',       place: 'Moscow' },
     { id: 'piano', label: 'Piano',         place: 'MPR' },
     { id: 'cbc',  label: 'CBC',            place: 'Toronto' },
     { id: 'bbc',  label: 'BBC',            place: 'London' },
@@ -821,7 +822,7 @@
   // are literal too); the rest are typical figures for that kind of stream, not individually
   // measured — the estimate is a guide for data-plan awareness, not a guarantee.
   const NETWORK_DEFAULT_KBPS = {
-    fip: 128, rp: 192, soma: 128, nts: 128, club: 128, piano: 128,
+    fip: 128, rp: 192, soma: 128, nts: 128, club: 128, trance: 96, piano: 128,
     cbc: 128, bbc: 96, classical: 128, yoga: 128, meditate: 96, slaa: 96,
   };
 
@@ -885,6 +886,18 @@
     { network:'club', name:'Kiosk Radio',     genre:'Electronic · jazz (Brussels)', url:'https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b', now:{type:'airtime', host:'kioskradiobxl.out.airtime.pro'} },
     { network:'club', name:'Sub.FM',          genre:'Dubstep · jungle · techno', url:'https://subfm.radioca.st/Sub.FM' },
     { network:'club', name:'TM Radio',        genre:'Progressive · tech house',  url:'https://stream.tm-radio.com/tribalmixes' },
+
+    // Trance — Radio Record's trance and progressive channels. HTTPS AAC at 96 kbps (the bitrate
+    // is in each filename). URLs are from a community list of Radio Record streams (active
+    // Oct 2026), not individually tested here; no metadata, and not in ICY_NETWORKS, so no relay lookups.
+    { network:'trance', name:'Trancemission',    genre:'Trance',                  url:'https://radiorecord.hostingradio.ru/tm96.aacp' },
+    { network:'trance', name:'Trancehouse',      genre:'Trance · progressive house', url:'https://radiorecord.hostingradio.ru/trancehouse96.aacp' },
+    { network:'trance', name:'Progressive',      genre:'Progressive house · trance', url:'https://radiorecord.hostingradio.ru/progr96.aacp' },
+    { network:'trance', name:'Trance Classics',  genre:'Classic trance',          url:'https://radiorecord.hostingradio.ru/trancehits96.aacp' },
+    { network:'trance', name:'Uplifting',        genre:'Uplifting trance',        url:'https://radiorecord.hostingradio.ru/uplift96.aacp' },
+    { network:'trance', name:'Hypnotic',         genre:'Hypnotic · deep trance',  url:'https://radiorecord.hostingradio.ru/hypno96.aacp' },
+    { network:'trance', name:'Armin van Buuren', genre:'Trance · Armin’s picks', url:'https://radiorecord.hostingradio.ru/armin96.aacp' },
+    { network:'trance', name:'Goa / Psy',        genre:'Goa · psytrance',         url:'https://radiorecord.hostingradio.ru/goa96.aacp' },
 
     // Piano — from YourClassical (Minnesota Public Radio), listener-supported and ad-free
     { network:'piano', name:'Peaceful Piano', genre:'Solo piano',      url:'https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac' },
