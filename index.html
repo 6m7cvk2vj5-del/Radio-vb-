@@ -861,6 +861,12 @@
     { network:'soma', name:'Underground 80s',  genre:'80s synthpop',       url:'https://ice1.somafm.com/u80s-128-mp3', lowUrl:'https://ice1.somafm.com/u80s-32-aac', lowKbps:32 },
     { network:'soma', name:'Lush',             genre:'Mellow vocals',      url:'https://ice1.somafm.com/lush-128-mp3', lowUrl:'https://ice1.somafm.com/lush-32-aac', lowKbps:32 },
     { network:'soma', name:'Space Station',    genre:'Space music',        url:'https://ice1.somafm.com/spacestation-128-mp3', lowUrl:'https://ice1.somafm.com/spacestation-32-aac', lowKbps:32 },
+    // SomaFM's dance-floor channels
+    { network:'soma', name:'Beat Blender',     genre:'Deep house · downtempo', url:'https://ice1.somafm.com/beatblender-128-mp3', lowUrl:'https://ice1.somafm.com/beatblender-32-aac', lowKbps:32 },
+    { network:'soma', name:'The Trip',         genre:'Progressive house · trance', url:'https://ice1.somafm.com/thetrip-128-mp3', lowUrl:'https://ice1.somafm.com/thetrip-32-aac', lowKbps:32 },
+    { network:'soma', name:'Dub Step Beyond',  genre:'Dubstep · dub · bass', url:'https://ice1.somafm.com/dubstep-128-mp3', lowUrl:'https://ice1.somafm.com/dubstep-32-aac', lowKbps:32 },
+    { network:'soma', name:'cliqhop idm',      genre:'IDM · glitch · electronica', url:'https://ice1.somafm.com/cliqhop-128-mp3', lowUrl:'https://ice1.somafm.com/cliqhop-32-aac', lowKbps:32 },
+    { network:'soma', name:'DEF CON Radio',    genre:'Techno · electro · hacker beats', url:'https://ice1.somafm.com/defcon-128-mp3', lowUrl:'https://ice1.somafm.com/defcon-32-aac', lowKbps:32 },
 
     // NTS — live channels show DJ/show name + artwork; Infinite Mixtapes have no confirmed metadata endpoint
     { network:'nts', name:'NTS 1',          genre:'Underground · global',   url:'https://stream-relay-geo.ntslive.net/stream', now:{type:'nts', channel:'1'} },
@@ -895,7 +901,11 @@
     // blocked as mixed content on an https-hosted page — these bypass it with a known-good
     // pool URL. BBC rotates these periodically; if one goes dead, it needs a fresh pool number.
     { network:'bbc', name:'Radio 1 Dance', genre:'EDM · house',       url:'https://as-hls-ww-live.akamaized.net/pool_62063831/live/ww/bbc_radio_one_dance/bbc_radio_one_dance.isml/bbc_radio_one_dance-audio=96000.norewind.m3u8', now:{type:'bbc', service:'bbc_radio_one_dance'} },
-    { network:'bbc', name:'6 Music',       genre:'Alt · indie',       url:'https://as-hls-ww-live.akamaized.net/pool_81827798/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio=96000.norewind.m3u8', now:{type:'bbc', service:'bbc_6music'} },
+    // Radio 1 and 1Xtra pool numbers are from a community HLS list whose Dance/6 Music/Radio 3
+    // entries match the working ones here; Radio 1 Anthems is UK-only so it is not included.
+    { network:'bbc', name:'Radio 1',       genre:'Pop · dance · Essential Mix', url:'https://as-hls-ww-live.akamaized.net/pool_01505109/live/ww/bbc_radio_one/bbc_radio_one.isml/bbc_radio_one-audio=96000.norewind.m3u8', now:{type:'bbc', service:'bbc_radio_one'} },
+    { network:'bbc', name:'Radio 1Xtra',   genre:'Garage · grime · bass · hip-hop', url:'https://as-hls-ww-live.akamaized.net/pool_92079267/live/ww/bbc_1xtra/bbc_1xtra.isml/bbc_1xtra-audio=96000.norewind.m3u8', now:{type:'bbc', service:'bbc_1xtra'} },
+    { network:'bbc', name:'6 Music',       genre:'Alt · indie',      url:'https://as-hls-ww-live.akamaized.net/pool_81827798/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio=96000.norewind.m3u8', now:{type:'bbc', service:'bbc_6music'} },
     { network:'bbc', name:'Radio 3',       genre:'Classical · piano', url:'https://as-hls-ww-live.akamaized.net/pool_23461179/live/ww/bbc_radio_three/bbc_radio_three.isml/bbc_radio_three-audio=96000.norewind.m3u8', now:{type:'bbc', service:'bbc_radio_three'} },
 
     // Classical — both confirmed directly from the broadcasters' own published stream pages
