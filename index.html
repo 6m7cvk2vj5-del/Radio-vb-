@@ -1919,19 +1919,35 @@
       clearRecoveryTimers();
       audio.pause();
     });
-    // Lock-screen buttons are always live, so wrap around the current network's list.
+    // Lock-screen skip buttons: iOS shows either next/previous or skip-back/forward, never both.
+    // Live streams (and the looping/rotating clips, which behave like radio) get next/previous
+    // stations, wrapping around the current network; finite files such as talks get +/-15 s.
+    const SEEK_STEP = 15;
     const lockSkip = delta => {
       const filtered = currentGroup();
       const cur = indexWithinGroup();
       if(cur === -1 || !filtered.length) return;
       selectStation(stations.indexOf(filtered[(cur + delta + filtered.length) % filtered.length]));
     };
-    navigator.mediaSession.setActionHandler('previoustrack', () => lockSkip(-1));
-    navigator.mediaSession.setActionHandler('nexttrack', () => lockSkip(1));
-    // iOS swaps next/previous for skip-10-seconds on finite files unless the seek actions are unset.
-    ['seekbackward', 'seekforward', 'seekto'].forEach(a => {
-      try { navigator.mediaSession.setActionHandler(a, null); } catch(e){}
-    });
+    const lockSeek = delta => {
+      if(!isFinite(audio.duration)) return;
+      audio.currentTime = Math.min(audio.duration, Math.max(0, audio.currentTime + delta));
+    };
+    const setAction = (name, fn) => {
+      try { navigator.mediaSession.setActionHandler(name, fn); } catch(e){}
+    };
+    function applyLockControls(){
+      const s = currentIndex === null ? null : stations[currentIndex];
+      const fileMode = !!s && !s.pool && !s.loop && isFinite(audio.duration) && audio.duration > 0;
+      setAction('previoustrack', fileMode ? null : () => lockSkip(-1));
+      setAction('nexttrack',     fileMode ? null : () => lockSkip(1));
+      setAction('seekbackward',  fileMode ? () => lockSeek(-SEEK_STEP) : null);
+      setAction('seekforward',   fileMode ? () => lockSeek(SEEK_STEP) : null);
+    }
+    applyLockControls();
+    audio.addEventListener('loadedmetadata', applyLockControls);
+    audio.addEventListener('durationchange', applyLockControls);
+    audio.addEventListener('emptied', applyLockControls);
   }
 
   // ---------- Settings: theme + text size ----------
