@@ -1456,8 +1456,20 @@
 
   // ---------- Now playing metadata ----------
 
+  // Lock screen / notification controls: show the song when we have one, otherwise the station.
+  function updateMediaSession(song){
+    if(!('mediaSession' in navigator) || currentIndex === null) return;
+    const s = stations[currentIndex];
+    const meta = song
+      ? { title: song.title, artist: song.artist || s.name, album: s.name }
+      : { title: s.name, artist: networkLabel(s.network), album: s.genre };
+    if(song && song.cover) meta.artwork = [{ src: song.cover, sizes: '512x512' }];
+    try { navigator.mediaSession.metadata = new MediaMetadata(meta); } catch(e){}
+  }
+
   // The card stays on screen; when there's no song to show it falls back to a placeholder.
   function hideTrackCard(message){
+    updateMediaSession(null);
     trackCard.classList.add('empty');
     trackTitleEl.textContent = message || 'Nothing playing';
     trackArtistEl.textContent = '';
@@ -1468,6 +1480,7 @@
   }
 
   function showTrackCard(title, artist, coverUrl, spotifyQuery){
+    updateMediaSession({ title: title, artist: artist, cover: coverUrl });
     trackCard.classList.remove('empty');
     trackTitleEl.textContent = title;
     trackArtistEl.textContent = artist || '';
@@ -1820,13 +1833,7 @@
     healthyTimer = setTimeout(() => { reconnectAttempts = 0; }, HEALTHY_PLAY_MS);
     clearRecoveryTimers();
     if(currentIndex !== null){
-      const s = stations[currentIndex];
-      if('mediaSession' in navigator){
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: s.name, artist: networkLabel(s.network), album: s.genre
-        });
-        navigator.mediaSession.playbackState = 'playing';
-      }
+      if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       startNowPlayingPolling();
     }
   });
@@ -1912,8 +1919,35 @@
       clearRecoveryTimers();
       audio.pause();
     });
-    navigator.mediaSession.setActionHandler('previoustrack', () => stepStation(-1));
-    navigator.mediaSession.setActionHandler('nexttrack', () => stepStation(1));
+    // Lock-screen skip buttons: iOS shows either next/previous or skip-back/forward, never both.
+    // Live streams (and the looping/rotating clips, which behave like radio) get next/previous
+    // stations, wrapping around the current network; finite files such as talks get +/-15 s.
+    const SEEK_STEP = 15;
+    const lockSkip = delta => {
+      const filtered = currentGroup();
+      const cur = indexWithinGroup();
+      if(cur === -1 || !filtered.length) return;
+      selectStation(stations.indexOf(filtered[(cur + delta + filtered.length) % filtered.length]));
+    };
+    const lockSeek = delta => {
+      if(!isFinite(audio.duration)) return;
+      audio.currentTime = Math.min(audio.duration, Math.max(0, audio.currentTime + delta));
+    };
+    const setAction = (name, fn) => {
+      try { navigator.mediaSession.setActionHandler(name, fn); } catch(e){}
+    };
+    function applyLockControls(){
+      const s = currentIndex === null ? null : stations[currentIndex];
+      const fileMode = !!s && !s.pool && !s.loop && isFinite(audio.duration) && audio.duration > 0;
+      setAction('previoustrack', fileMode ? null : () => lockSkip(-1));
+      setAction('nexttrack',     fileMode ? null : () => lockSkip(1));
+      setAction('seekbackward',  fileMode ? () => lockSeek(-SEEK_STEP) : null);
+      setAction('seekforward',   fileMode ? () => lockSeek(SEEK_STEP) : null);
+    }
+    applyLockControls();
+    audio.addEventListener('loadedmetadata', applyLockControls);
+    audio.addEventListener('durationchange', applyLockControls);
+    audio.addEventListener('emptied', applyLockControls);
   }
 
   // ---------- Settings: theme + text size ----------
