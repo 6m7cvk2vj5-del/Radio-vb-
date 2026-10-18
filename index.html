@@ -1814,10 +1814,15 @@
   function startNowPlayingPolling(){
     stopNowPlayingPolling();
     const s = stations[currentIndex];
-    if(!hasNowSource(s)){ return; }
+    const dbg = new URLSearchParams(location.search);
+    if(!hasNowSource(s) && !dbg.has('fake')){ return; }
     const myRequestId = ++npRequestId;
     const poll = async () => {
-      const info = await fetchNowPlaying(s);
+      // TEMP DIAGNOSTIC (not for merging): ?fake fakes a song, &noart drops the artwork
+      const info = dbg.has('fake')
+        ? { title: 'Test Song', artist: 'Test Artist', spotifyQuery: 'test',
+            cover: dbg.has('noart') ? '' : new URL('icon.png', location.href).href }
+        : await fetchNowPlaying(s);
       if(myRequestId !== npRequestId) return; // station changed while awaiting
       if(!info || !info.title){ hideTrackCard('No song info right now'); return; }
       showTrackCard(info.title, info.artist, info.cover, info.spotifyQuery);
@@ -1958,8 +1963,10 @@
     setAction('previoustrack', () => lockSkip(-1));
     setAction('nexttrack',     () => lockSkip(1));
     // Without this iOS falls back to its own skip-10-seconds buttons instead of next/previous.
-    setAction('seekbackward', null);
-    setAction('seekforward',  null);
+    if(!new URLSearchParams(location.search).has('nonull')){   // TEMP DIAGNOSTIC: &nonull skips this
+      setAction('seekbackward', null);
+      setAction('seekforward',  null);
+    }
     audio.addEventListener('loadedmetadata', applyLockControls);
     audio.addEventListener('durationchange', applyLockControls);
   }
