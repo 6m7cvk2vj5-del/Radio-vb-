@@ -1957,6 +1957,9 @@
     }
     setAction('previoustrack', () => lockSkip(-1));
     setAction('nexttrack',     () => lockSkip(1));
+    // Without this iOS falls back to its own skip-10-seconds buttons instead of next/previous.
+    setAction('seekbackward', null);
+    setAction('seekforward',  null);
     audio.addEventListener('loadedmetadata', applyLockControls);
     audio.addEventListener('durationchange', applyLockControls);
   }
