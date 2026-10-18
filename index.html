@@ -1916,13 +1916,11 @@
 
   if('mediaSession' in navigator){
     navigator.mediaSession.setActionHandler('play', () => {
-      navigator.mediaSession.playbackState = 'playing';
       userWantsPlaying = true;
       reconnectAttempts = 0;
       audio.play().catch(() => {});
     });
     navigator.mediaSession.setActionHandler('pause', () => {
-      navigator.mediaSession.playbackState = 'paused';
       userWantsPlaying = false;
       clearRecoveryTimers();
       audio.pause();
@@ -1944,18 +1942,23 @@
     const setAction = (name, fn) => {
       try { navigator.mediaSession.setActionHandler(name, fn); } catch(e){}
     };
+    // Only touch the registered actions when the mode really changes: live streams keep the
+    // plain next/previous handlers set once below, exactly as before.
+    let fileMode = false;
     function applyLockControls(){
       const s = currentIndex === null ? null : stations[currentIndex];
-      const fileMode = !!s && !s.pool && !s.loop && isFinite(audio.duration) && audio.duration > 0;
-      setAction('previoustrack', fileMode ? null : () => lockSkip(-1));
-      setAction('nexttrack',     fileMode ? null : () => lockSkip(1));
-      setAction('seekbackward',  fileMode ? () => lockSeek(-SEEK_STEP) : null);
-      setAction('seekforward',   fileMode ? () => lockSeek(SEEK_STEP) : null);
+      const want = !!s && !s.pool && !s.loop && isFinite(audio.duration) && audio.duration > 0;
+      if(want === fileMode) return;
+      fileMode = want;
+      setAction('previoustrack', want ? null : () => lockSkip(-1));
+      setAction('nexttrack',     want ? null : () => lockSkip(1));
+      setAction('seekbackward',  want ? () => lockSeek(-SEEK_STEP) : null);
+      setAction('seekforward',   want ? () => lockSeek(SEEK_STEP) : null);
     }
-    applyLockControls();
+    setAction('previoustrack', () => lockSkip(-1));
+    setAction('nexttrack',     () => lockSkip(1));
     audio.addEventListener('loadedmetadata', applyLockControls);
     audio.addEventListener('durationchange', applyLockControls);
-    audio.addEventListener('emptied', applyLockControls);
   }
 
   // ---------- Settings: theme + text size ----------
