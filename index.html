@@ -384,6 +384,7 @@
   .syncBox[hidden], .syncBox [hidden]{ display: none; }
   .syncBox > .settingsLabel{ display: block; margin-bottom: 12px; }
   .syncBtns{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  #backupNote:not(:empty){ margin: 10px 0 0; }
   .pillBtn{
     border: 1px solid var(--amber);
     border-radius: 9px;
@@ -817,6 +818,16 @@
         </div>
         <p class="settingsNote likesEmpty" id="likesEmpty">Nothing yet. Tap the heart under a song while it plays and it lands here.</p>
         <ul class="likesList" id="likesList"></ul>
+        <div class="syncBox" id="backupBox">
+          <span class="settingsLabel">Save or load a list file</span>
+          <p class="settingsNote">For a device that can't sync, such as a work laptop. Export downloads your liked songs as a file you can send to yourself. Import adds the songs from such a file to the list on this device.</p>
+          <div class="syncBtns">
+            <button class="pillBtn" id="exportBtn" type="button">Export list</button>
+            <button class="pillBtn quiet" id="importBtn" type="button">Import list</button>
+          </div>
+          <input type="file" id="importFile" accept=".json,application/json" hidden>
+          <p class="settingsNote" id="backupNote"></p>
+        </div>
         <div class="syncBox" id="syncBox" hidden>
           <span class="settingsLabel">Sync across devices</span>
           <div id="syncOff">
@@ -924,6 +935,7 @@
     { id: 'soma', label: 'SomaFM',         place: 'San Francisco' },
     { id: 'nts',  label: 'NTS',            place: 'London' },
     { id: 'club', label: 'Club',           place: 'Various' },
+    { id: 'trance', label: 'Trance',       place: 'Moscow' },
     { id: 'piano', label: 'Piano',         place: 'MPR' },
     { id: 'cbc',  label: 'CBC',            place: 'Toronto' },
     { id: 'bbc',  label: 'BBC',            place: 'London' },
@@ -967,7 +979,7 @@
   // are literal too); the rest are typical figures for that kind of stream, not individually
   // measured — the estimate is a guide for data-plan awareness, not a guarantee.
   const NETWORK_DEFAULT_KBPS = {
-    fip: 128, rp: 192, soma: 128, nts: 128, club: 128, piano: 128,
+    fip: 128, rp: 192, soma: 128, nts: 128, club: 128, trance: 96, piano: 128,
     cbc: 128, bbc: 96, classical: 128, yoga: 128, meditate: 96, slaa: 96,
   };
 
@@ -1031,6 +1043,18 @@
     { network:'club', name:'Kiosk Radio',     genre:'Electronic · jazz (Brussels)', url:'https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b', now:{type:'airtime', host:'kioskradiobxl.out.airtime.pro'} },
     { network:'club', name:'Sub.FM',          genre:'Dubstep · jungle · techno', url:'https://subfm.radioca.st/Sub.FM' },
     { network:'club', name:'TM Radio',        genre:'Progressive · tech house',  url:'https://stream.tm-radio.com/tribalmixes' },
+
+    // Trance — Radio Record's trance and progressive channels. HTTPS AAC at 96 kbps (the bitrate
+    // is in each filename). URLs are from a community list of Radio Record streams (active
+    // Oct 2026), not individually tested here; no metadata, and not in ICY_NETWORKS, so no relay lookups.
+    { network:'trance', name:'Trancemission',    genre:'Trance',                  url:'https://radiorecord.hostingradio.ru/tm96.aacp' },
+    { network:'trance', name:'Trancehouse',      genre:'Trance · progressive house', url:'https://radiorecord.hostingradio.ru/trancehouse96.aacp' },
+    { network:'trance', name:'Progressive',      genre:'Progressive house · trance', url:'https://radiorecord.hostingradio.ru/progr96.aacp' },
+    { network:'trance', name:'Trance Classics',  genre:'Classic trance',          url:'https://radiorecord.hostingradio.ru/trancehits96.aacp' },
+    { network:'trance', name:'Uplifting',        genre:'Uplifting trance',        url:'https://radiorecord.hostingradio.ru/uplift96.aacp' },
+    { network:'trance', name:'Hypnotic',         genre:'Hypnotic · deep trance',  url:'https://radiorecord.hostingradio.ru/hypno96.aacp' },
+    { network:'trance', name:'Armin van Buuren', genre:'Trance · Armin’s picks', url:'https://radiorecord.hostingradio.ru/armin96.aacp' },
+    { network:'trance', name:'Goa / Psy',        genre:'Goa · psytrance',         url:'https://radiorecord.hostingradio.ru/goa96.aacp' },
 
     // Piano — from YourClassical (Minnesota Public Radio), listener-supported and ad-free
     { network:'piano', name:'Peaceful Piano', genre:'Solo piano',      url:'https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac' },
@@ -2014,6 +2038,75 @@
     try { await navigator.clipboard.writeText(syncCode); setSyncMessage('Code copied.'); }
     catch(e){ setSyncMessage('Press and hold the code above to copy it.'); }
   });
+
+  // ---------- Liked songs: export / import a file ----------
+  // For a device that can't reach the relay: download the list, move the file however you like,
+  // import it on another device. Import merges with the same newest-wins rule as sync.
+  const MAX_IMPORT = 2000;
+  const backupNote = document.getElementById('backupNote');
+  const importFile = document.getElementById('importFile');
+
+  // A song from a file we didn't write ourselves: keep only known fields, as plain text.
+  function cleanImported(r){
+    if(!r || typeof r !== 'object') return null;
+    const text = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
+    const title = text(r.title, 200).trim();
+    if(!title) return null;
+    const artist = text(r.artist, 200);
+    const ts = isFinite(Number(r.ts)) ? Math.floor(Number(r.ts)) : (isFinite(Number(r.at)) ? Math.floor(Number(r.at)) : Date.now());
+    return {
+      id: likeId(artist, title), title: title, artist: artist,
+      cover: /^https:\/\//.test(r.cover) ? text(r.cover, 500) : '',
+      query: text(r.query, 400), station: text(r.station, 100),
+      at: isFinite(Number(r.at)) ? Math.floor(Number(r.at)) : ts, ts: ts
+    };
+  }
+
+  function exportLikes(){
+    const live = likes.filter(r => !r.del).sort((a, b) => b.at - a.at);
+    if(!live.length){ backupNote.textContent = 'Nothing to export yet.'; return; }
+    const payload = { app: 'dial', version: 1, exported: new Date().toISOString(), songs: live };
+    const blob = new Blob([JSON.stringify(payload, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'dial-liked-songs-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    backupNote.textContent = 'Saved ' + live.length + (live.length === 1 ? ' song' : ' songs') + ' to a file.';
+  }
+
+  async function importLikes(file){
+    try {
+      if(file.size > 2000000) throw new Error('big');
+      const data = JSON.parse(await file.text());
+      const list = Array.isArray(data) ? data : (data && Array.isArray(data.songs) ? data.songs : null);
+      if(!list) throw new Error('shape');
+      const incoming = list.slice(0, MAX_IMPORT).map(cleanImported).filter(Boolean);
+      if(!incoming.length){ backupNote.textContent = 'No songs found in that file.'; return; }
+      const before = new Set(likes.filter(r => !r.del).map(r => r.id));
+      likes = mergeLikes(likes, incoming);
+      const added = likes.filter(r => !r.del && !before.has(r.id)).length;
+      saveLikes();
+      refreshLikeBtn();
+      renderLikes();
+      scheduleSync();
+      backupNote.textContent = added
+        ? 'Added ' + added + (added === 1 ? ' song.' : ' songs.')
+        : 'Nothing new: those songs were already here.';
+    } catch(e){
+      backupNote.textContent = 'That doesn’t look like a Dial list file.';
+    }
+  }
+
+  document.getElementById('exportBtn').addEventListener('click', exportLikes);
+  document.getElementById('importBtn').addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', () => {
+    const f = importFile.files && importFile.files[0];
+    importFile.value = '';
+    if(f) importLikes(f);
+  });
   document.addEventListener('visibilitychange', () => { if(!document.hidden) syncIfStale(); });
   renderLikes();
   renderSync();
@@ -2298,26 +2391,32 @@
     return { title: title, artist: artist, cover: null, spotifyQuery: artist + ' ' + title };
   }
 
+  // Why the last BBC lookup came back empty, shown on the card so a failure can be diagnosed on a phone.
+  let bbcDebug = '';
   async function fetchBbcNow(serviceId){
     // BBC's API may not allow calls straight from the browser (CORS), so ask through the relay
     // first; an older relay that doesn't know this host answers 403 and a direct call covers it.
     const target = 'https://rms.api.bbc.co.uk/v2/services/' + serviceId + '/segments/latest?experience=domestic&offset=0&limit=4';
     let data = null;
+    const why = [];
     if(RELAY_URL){
       try{
         const r = await relayFetch('/json?u=' + encodeURIComponent(target));
-        if(r.ok) data = await r.json();
-      } catch(e){ data = null; }
+        if(r.ok) data = await r.json(); else why.push('relay ' + r.status);
+      } catch(e){ why.push('relay ' + (e && e.name || 'error')); }
     }
     if(!data){
-      const res = await fetch(target);
-      if(!res.ok) return null;
-      data = await res.json();
+      try{
+        const res = await fetch(target);
+        if(res.ok) data = await res.json(); else why.push('direct ' + res.status);
+      } catch(e){ why.push('direct ' + (e && e.name || 'error')); }
     }
+    bbcDebug = why.join(', ');
+    if(!data) return null;
     const items = (data.data || []).filter(it => it && it.segment_type !== 'speech' && it.titles && it.titles.primary && it.titles.secondary);
     // Prefer the segment flagged as playing now; otherwise the newest (list is newest first).
     const item = items.find(it => it.offset && it.offset.now_playing) || items[0];
-    if(!item) return null;
+    if(!item){ bbcDebug = (why.join(', ') + ' no usable segment').trim(); return null; }
     // Pop/dance: primary = artist, secondary = track. Radio 3 classical: primary = composer,
     // secondary = work, with the performers in tertiary (shown as extra artist info).
     const artist = item.titles.primary;
@@ -2415,7 +2514,7 @@
     const poll = async () => {
       const info = await fetchNowPlaying(s);
       if(myRequestId !== npRequestId) return; // station changed while awaiting
-      if(!info || !info.title){ hideTrackCard('No song info right now'); return; }
+      if(!info || !info.title){ hideTrackCard('No song info right now' + (s.now && s.now.type === 'bbc' && bbcDebug ? ' (' + bbcDebug + ')' : '')); return; }
       showTrackCard(info.title, info.artist, info.cover, info.spotifyQuery);
     };
     poll();
