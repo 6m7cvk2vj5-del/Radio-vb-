@@ -362,7 +362,7 @@
     color: var(--text-dim);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .likeFind, .likeDel, .pillBtn{
+  .likeFind, .likeDel, .likeHeart, .pillBtn{
     appearance: none;
     background: none;
     border: none;
@@ -374,6 +374,9 @@
     padding: 6px 4px;
   }
   .likeDel{ color: var(--text-dim); font-size: calc(14px * var(--font-scale)); }
+  .likeHeart{ color: var(--text-dim); font-size: calc(17px * var(--font-scale)); line-height: 1; }
+  .likeHeart.on{ color: var(--amber); }
+  .pillBtn[hidden]{ display: none; }
   .likeRow .likeLinks{ display: none; padding: 0 0 12px; }
   .likeRow.open .likeLinks{ display: grid; }
   .likesEmpty{ margin: 4px 0 8px !important; }
@@ -741,6 +744,9 @@
       <span class="brand">DIAL</span>
       <div class="headerRight">
         <span class="live-indicator" id="liveIndicator"><span class="dot"></span>LIVE</span>
+        <button class="gearBtn" id="historyBtn" aria-label="Recently played">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </button>
         <button class="gearBtn" id="likesBtn" aria-label="Liked songs">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z"></path></svg>
         </button>
@@ -788,6 +794,21 @@
       </div>
     </div>
 
+    <div class="settingsOverlay" id="historyOverlay">
+      <div class="settingsPanel likesPanel">
+        <div class="settingsHeader">
+          <span>Recently played</span>
+          <button class="settingsClose" id="historyClose" aria-label="Close">✕</button>
+        </div>
+        <p class="settingsNote likesEmpty" id="historyEmpty">Nothing yet. Songs land here once they've played for a few seconds, from any station.</p>
+        <ul class="likesList" id="historyList"></ul>
+        <p class="settingsNote" id="historyNote"></p>
+        <div class="syncBtns">
+          <button class="pillBtn quiet" id="historyClear" type="button" hidden>Clear list</button>
+        </div>
+      </div>
+    </div>
+
     <div class="settingsOverlay" id="likesOverlay">
       <div class="settingsPanel likesPanel">
         <div class="settingsHeader">
@@ -799,7 +820,7 @@
         <div class="syncBox" id="syncBox" hidden>
           <span class="settingsLabel">Sync across devices</span>
           <div id="syncOff">
-            <p class="settingsNote">Keeps this list the same on your phone and your computer. Turn it on here, then enter the code on the other device.</p>
+            <p class="settingsNote">Keeps your liked songs and your recently played list the same on your phone and your computer. Turn it on here, then enter the code on the other device.</p>
             <div class="syncBtns">
               <button class="pillBtn" id="syncStart" type="button">Turn on sync</button>
               <button class="pillBtn quiet" id="syncHave" type="button">I have a code</button>
@@ -811,7 +832,7 @@
           </div>
           <div id="syncOn" hidden>
             <p class="syncCode" id="syncCodeText"></p>
-            <p class="settingsNote">Enter this code on your other devices. Anyone who has it can see and change this list.</p>
+            <p class="settingsNote">Enter this code on your other devices. Anyone who has it can see and change these lists.</p>
             <p class="settingsNote" id="syncStatus"></p>
             <div class="syncBtns">
               <button class="pillBtn" id="syncNow" type="button">Sync now</button>
@@ -1613,6 +1634,7 @@
     searchQuery = '';
     currentSong = null;
     refreshLikeBtn();
+    armHistory();
   }
 
   function showTrackCard(title, artist, coverUrl, spotifyQuery){
@@ -1640,6 +1662,7 @@
       currentSong = null;
     }
     refreshLikeBtn();
+    armHistory();
   }
 
   // "Search with..." popup: one row per service, each opening a search for the current song.
@@ -1800,6 +1823,7 @@
     saveLikes();
     refreshLikeBtn();
     renderLikes();
+    renderHistory();
     scheduleSync();
   }
 
@@ -1814,6 +1838,26 @@
     });
   }
   likeBtn.addEventListener('click', toggleLike);
+
+  // The "Find" list under a song row in Liked songs and Recently played.
+  function findLinks(q, isOpen){
+    const links = document.createElement('ul');
+    links.className = 'searchOptions likeLinks';
+    SEARCH_SERVICES.forEach(svc => {
+      const item = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = svc.url(q);
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = svc.name;
+      if(svc.name === 'Apple Music' && isOpen){
+        lookupAppleMusic(q).then(url => { if(url) a.href = url; });
+      }
+      item.appendChild(a);
+      links.appendChild(item);
+    });
+    return links;
+  }
 
   function renderLikes(){
     const live = likes.filter(r => !r.del).sort((a, b) => b.at - a.at);
@@ -1852,21 +1896,7 @@
       del.setAttribute('aria-label', 'Remove ' + r.title);
       head.appendChild(thumb); head.appendChild(main); head.appendChild(find); head.appendChild(del);
 
-      const links = document.createElement('ul');
-      links.className = 'searchOptions likeLinks';
-      SEARCH_SERVICES.forEach(svc => {
-        const item = document.createElement('li');
-        const a = document.createElement('a');
-        a.href = svc.url(q);
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.textContent = svc.name;
-        if(svc.name === 'Apple Music' && r.id === openLikeId){
-          lookupAppleMusic(q).then(url => { if(url) a.href = url; });
-        }
-        item.appendChild(a);
-        links.appendChild(item);
-      });
+      const links = findLinks(q, r.id === openLikeId);
 
       find.addEventListener('click', () => { openLikeId = openLikeId === r.id ? null : r.id; renderLikes(); });
       del.addEventListener('click', () => setLike({ id: r.id, del: true }));
@@ -1960,7 +1990,7 @@
     try { if(code) localStorage.setItem(SYNC_CODE_KEY, code); else localStorage.removeItem(SYNC_CODE_KEY); } catch(e){}
     syncMessage = '';
     renderSync();
-    if(code) syncLikes();
+    if(code){ syncLikes(); syncHistory(); }
   }
 
   document.getElementById('syncStart').addEventListener('click', () => setSyncCode(newSyncCode()));
@@ -1988,6 +2018,189 @@
   renderLikes();
   renderSync();
   syncLikes();
+
+  // ---------- Recently played ----------
+  // Every song that has actually played for HISTORY_MIN_MS, from any station, newest first. One
+  // record per song (same id as Liked songs), so hearing a song again moves it to the top rather
+  // than repeating it. Synced through the relay with the same code as the likes. A cleared list
+  // keeps a `clearedAt` time so the clear reaches other devices; relay/worker.js has the same
+  // merge rule (mergeHistory).
+  const HISTORY_KEY = 'dial-history';
+  const HISTORY_CLEARED_KEY = 'dial-history-cleared';
+  const HISTORY_MIN_MS = 5000;
+  const HISTORY_MAX = 100;
+  const HISTORY_SYNC_DELAY_MS = 60000;   // batches plays, so the relay's daily write allowance lasts
+  let plays = [];
+  let historyClearedAt = 0;
+  try {
+    plays = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    if(!Array.isArray(plays)) plays = [];
+    historyClearedAt = Number(localStorage.getItem(HISTORY_CLEARED_KEY)) || 0;
+  } catch(e){ plays = []; }
+
+  const historyOverlay = document.getElementById('historyOverlay');
+  const historyList = document.getElementById('historyList');
+  const historyEmpty = document.getElementById('historyEmpty');
+  const historyNote = document.getElementById('historyNote');
+  const historyClearBtn = document.getElementById('historyClear');
+  let openHistoryId = null;
+  let historyTimer = null, historyTimedId = '';
+  let historySyncing = false, historySyncAgain = false, historySyncTimer = null, historySyncMessage = '';
+
+  // Per song id the newest play wins; anything at or before the latest clear is dropped.
+  function mergeHistory(a, b, clearedA, clearedB){
+    const clearedAt = Math.max(Number(clearedA) || 0, Number(clearedB) || 0);
+    const byId = new Map();
+    (a || []).concat(b || []).forEach(r => {
+      if(!r || !r.id || !r.title || !isFinite(r.at) || r.at <= clearedAt) return;
+      const cur = byId.get(r.id);
+      if(!cur || r.at > cur.at) byId.set(r.id, r);
+    });
+    const items = [...byId.values()].sort((x, y) => y.at - x.at).slice(0, HISTORY_MAX);
+    return { items: items, clearedAt: clearedAt };
+  }
+
+  function applyHistory(merged){
+    plays = merged.items;
+    historyClearedAt = merged.clearedAt;
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(plays));
+      localStorage.setItem(HISTORY_CLEARED_KEY, String(historyClearedAt));
+    } catch(e){}
+    if(historyOverlay.classList.contains('open')) renderHistory();
+  }
+
+  // Counts a song only while it is really playing: audio running with enough data buffered. A
+  // pause, a stall, a new station or a different song restarts (or cancels) the count. The poll
+  // repeats the same song every 20 s; that leaves the count alone.
+  function armHistory(){
+    const playing = !!currentSong && !audio.paused && audio.readyState >= 3;
+    const id = playing ? likeId(currentSong.artist, currentSong.title) : '';
+    if(id === historyTimedId) return;
+    clearTimeout(historyTimer);
+    historyTimedId = id;
+    if(id) historyTimer = setTimeout(commitHistory, HISTORY_MIN_MS);
+  }
+
+  function commitHistory(){
+    if(!currentSong || !historyTimedId || likeId(currentSong.artist, currentSong.title) !== historyTimedId) return;
+    const st = currentIndex !== null ? stations[currentIndex] : null;
+    const rec = {
+      id: historyTimedId, title: currentSong.title, artist: currentSong.artist, cover: currentSong.cover,
+      query: currentSong.query, station: st ? st.name : '', at: Date.now()
+    };
+    applyHistory(mergeHistory(plays, [rec], historyClearedAt, 0));
+    scheduleHistorySync();
+  }
+
+  function timeAgo(ms){
+    const mins = Math.floor((Date.now() - ms) / 60000);
+    if(mins < 1) return 'just now';
+    if(mins < 60) return mins + ' min ago';
+    if(mins < 24 * 60) return Math.floor(mins / 60) + ' h ago';
+    return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
+  function renderHistory(){
+    historyEmpty.hidden = plays.length > 0;
+    historyClearBtn.hidden = plays.length === 0;
+    historyNote.textContent = !RELAY_URL ? '' : (!syncCode
+      ? 'Only on this device. Turn on sync in Liked songs (the heart) to share it with your other devices.'
+      : historySyncMessage);
+    historyList.innerHTML = '';
+    plays.forEach(r => {
+      const q = r.query || ((r.artist ? r.artist + ' ' : '') + r.title);
+      const li = document.createElement('li');
+      li.className = 'likeRow' + (r.id === openHistoryId ? ' open' : '');
+
+      const head = document.createElement('div');
+      head.className = 'likeHead';
+      const thumb = document.createElement('img');
+      thumb.className = 'likeThumb' + (r.cover ? '' : ' none');
+      thumb.alt = '';
+      if(r.cover){ thumb.onerror = () => thumb.classList.add('none'); thumb.src = r.cover; }
+      const main = document.createElement('div');
+      main.className = 'likeMain';
+      const t = document.createElement('p');
+      t.className = 'likeTitle';
+      t.textContent = r.title;
+      const m = document.createElement('p');
+      m.className = 'likeMeta';
+      m.textContent = [r.artist, r.station, timeAgo(r.at)].filter(Boolean).join(' · ');
+      main.appendChild(t); main.appendChild(m);
+      const liked = isLiked(r.id);
+      const heart = document.createElement('button');
+      heart.type = 'button';
+      heart.className = 'likeHeart' + (liked ? ' on' : '');
+      heart.textContent = liked ? '♥' : '♡';
+      heart.setAttribute('aria-pressed', liked ? 'true' : 'false');
+      heart.setAttribute('aria-label', (liked ? 'Unlike ' : 'Like ') + r.title);
+      const find = document.createElement('button');
+      find.type = 'button';
+      find.className = 'likeFind';
+      find.textContent = 'Find';
+      find.setAttribute('aria-expanded', r.id === openHistoryId ? 'true' : 'false');
+      head.appendChild(thumb); head.appendChild(main); head.appendChild(heart); head.appendChild(find);
+
+      heart.addEventListener('click', () => {
+        if(isLiked(r.id)) setLike({ id: r.id, del: true });
+        else setLike({ id: r.id, title: r.title, artist: r.artist, cover: r.cover, query: r.query, station: r.station });
+        refreshLikeBtn();
+      });
+      find.addEventListener('click', () => { openHistoryId = openHistoryId === r.id ? null : r.id; renderHistory(); });
+      li.appendChild(head); li.appendChild(findLinks(q, r.id === openHistoryId));
+      historyList.appendChild(li);
+    });
+  }
+
+  async function syncHistory(){
+    if(!syncCode || !RELAY_URL) return;
+    if(historySyncing){ historySyncAgain = true; return; }
+    historySyncing = true;
+    try {
+      const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: syncCode, items: plays, clearedAt: historyClearedAt }),
+        signal: AbortSignal.timeout(15000)
+      });
+      if(res.status === 405 || res.status === 404) throw { userMessage: 'The relay needs the latest worker.js to sync this list (see docs/relay-setup.md).' };
+      if(res.status === 501) throw { userMessage: 'Sync isn’t set up on the relay yet (see docs/relay-setup.md).' };
+      if(!res.ok) throw { userMessage: 'Couldn’t sync just now; it will retry.' };
+      const data = await res.json();
+      historySyncMessage = '';
+      applyHistory(mergeHistory(plays, Array.isArray(data.items) ? data.items : [], historyClearedAt, data.clearedAt));
+    } catch(e){
+      historySyncMessage = (e && e.userMessage) || 'Couldn’t reach the relay; it will retry.';
+    } finally {
+      historySyncing = false;
+      if(historyOverlay.classList.contains('open')) renderHistory();
+      if(historySyncAgain){ historySyncAgain = false; scheduleHistorySync(); }
+    }
+  }
+
+  function scheduleHistorySync(){
+    if(!syncCode || historySyncTimer) return;
+    historySyncTimer = setTimeout(() => { historySyncTimer = null; syncHistory(); }, HISTORY_SYNC_DELAY_MS);
+  }
+
+  function openHistory(){
+    renderHistory();
+    historyOverlay.classList.add('open');
+    syncHistory();
+  }
+  function closeHistory(){ historyOverlay.classList.remove('open'); }
+  document.getElementById('historyBtn').addEventListener('click', openHistory);
+  document.getElementById('historyClose').addEventListener('click', closeHistory);
+  historyOverlay.addEventListener('click', (e) => { if(e.target === historyOverlay) closeHistory(); });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeHistory(); });
+  historyClearBtn.addEventListener('click', () => {
+    if(!confirm('Clear the recently played list' + (syncCode ? ' on all your devices?' : '?'))) return;
+    applyHistory({ items: [], clearedAt: Date.now() });
+    syncHistory();
+  });
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) syncHistory(); });
+  syncHistory();
 
   async function fetchFipNow(id){
     // Ask through the relay first: some networks (work VPNs, filters) block radiofrance.fr's API
@@ -2221,6 +2434,7 @@
     clearTimeout(healthyTimer);
     healthyTimer = setTimeout(() => { reconnectAttempts = 0; }, HEALTHY_PLAY_MS);
     clearRecoveryTimers();
+    armHistory();
     if(currentIndex !== null){
       if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       startNowPlayingPolling();
@@ -2228,6 +2442,7 @@
   });
 
   audio.addEventListener('waiting', () => {
+    armHistory();
     clearTimeout(healthyTimer);
     statusEl.textContent = 'Buffering…';
     // Some streams keep trickling data too slowly to play (not a hard "stalled" fetch,
@@ -2261,6 +2476,7 @@
   });
 
   audio.addEventListener('pause', () => {
+    armHistory();
     updatePlayIcon(false);
     liveIndicator.classList.remove('on');
     if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';

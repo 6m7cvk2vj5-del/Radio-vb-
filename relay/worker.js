@@ -10,6 +10,8 @@
 //                                   {code, items}, the relay merges that into what it holds for
 //                                   the code and answers with the merged list. Needs a KV
 //                                   namespace bound to this Worker as LIKES (docs/relay-setup.md).
+//   POST /history                   same idea for the "Recently played" list: {code, items,
+//                                   clearedAt} in, merged {items, clearedAt} out. Same KV namespace.
 //
 // It is NOT an open proxy: it only talks to hosts that appear as station URLs in the live Dial
 // page (PAGE_URL), so adding a station to index.html needs no change here, and it only answers
@@ -332,6 +334,66 @@ async function syncLikes(req, env) {
   return reply({ items: merged }, 200, { 'Cache-Control': 'no-store' });
 }
 
+// ---------- Recently played sync ----------
+// One record per song: {id, title, artist, cover, query, station, at}, `at` being the last time it
+// was played. Merging keeps, per id, the newest `at`. Clearing the list sets `clearedAt`; records
+// at or before it are dropped, and the larger clearedAt wins. Same rule as mergeHistory in
+// index.html — keep the two in step. Stored under the same LIKES namespace as the likes.
+const MAX_HISTORY = 100;
+
+function cleanPlay(r) {
+  if (!r || typeof r !== 'object') return null;
+  const id = cleanText(r.id, 200);
+  const at = Number(r.at);
+  const title = cleanText(r.title, 200);
+  if (!id || !title || !isFinite(at)) return null;
+  return {
+    id, title, at: Math.floor(at),
+    artist: cleanText(r.artist, 200),
+    query: cleanText(r.query, 400),
+    station: cleanText(r.station, 100),
+    cover: /^https:\/\//.test(r.cover) ? cleanText(r.cover, 500) : '',
+  };
+}
+
+function mergeHistory(a, b, clearedA, clearedB) {
+  const clearedAt = Math.max(Number(clearedA) || 0, Number(clearedB) || 0);
+  const byId = new Map();
+  for (const r of [].concat(a || [], b || [])) {
+    const c = cleanPlay(r);
+    if (!c || c.at <= clearedAt) continue;
+    const cur = byId.get(c.id);
+    if (!cur || c.at > cur.at) byId.set(c.id, c);
+  }
+  const items = [...byId.values()].sort((x, y) => y.at - x.at).slice(0, MAX_HISTORY);
+  return { items, clearedAt };
+}
+
+async function historyKey(code) {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('dial-history:' + code));
+  return 'history:' + [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function syncHistory(req, env) {
+  if (!env || !env.LIKES) return reply({ error: 'sync not set up' }, 501, { 'Cache-Control': 'no-store' });
+  const text = await req.text();
+  if (text.length > MAX_BODY_BYTES) return reply({ error: 'too large' }, 413, { 'Cache-Control': 'no-store' });
+  let body;
+  try { body = JSON.parse(text); } catch (e) { return reply({ error: 'bad json' }, 400, { 'Cache-Control': 'no-store' }); }
+  const code = body && typeof body.code === 'string' ? body.code.trim().toUpperCase() : '';
+  if (!CODE_RE.test(code) || !Array.isArray(body.items)) return reply({ error: 'bad request' }, 400, { 'Cache-Control': 'no-store' });
+
+  const key = await historyKey(code);
+  const storedText = await env.LIKES.get(key);
+  let stored = {};
+  try { stored = storedText ? JSON.parse(storedText) : {}; } catch (e) {}
+  const merged = mergeHistory(stored.items, body.items, stored.clearedAt, body.clearedAt);
+  const mergedText = JSON.stringify(merged);
+  // Write only when something changed (KV's free plan allows 1,000 writes a day).
+  if (mergedText !== storedText) await env.LIKES.put(key, mergedText, { expirationTtl: LIKES_TTL_S });
+  return reply(merged, 200, { 'Cache-Control': 'no-store' });
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') {
@@ -353,6 +415,11 @@ export default {
       // Unlike the read-only calls, this stores data, so a real Dial page (Origin header) is required.
       if (req.method !== 'POST' || origin !== ORIGIN) return reply({ error: 'forbidden' }, 403);
       try { return await syncLikes(req, env); } catch (e) { return reply({ error: 'sync failed' }, 502, { 'Cache-Control': 'no-store' }); }
+    }
+
+    if (url.pathname === '/history') {
+      if (req.method !== 'POST' || origin !== ORIGIN) return reply({ error: 'forbidden' }, 403);
+      try { return await syncHistory(req, env); } catch (e) { return reply({ error: 'sync failed' }, 502, { 'Cache-Control': 'no-store' }); }
     }
 
     if (req.method !== 'GET') return reply({ error: 'method not allowed' }, 405);
