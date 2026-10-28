@@ -381,6 +381,7 @@
   .syncBox[hidden], .syncBox [hidden]{ display: none; }
   .syncBox > .settingsLabel{ display: block; margin-bottom: 12px; }
   .syncBtns{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  #backupNote:not(:empty){ margin: 10px 0 0; }
   .pillBtn{
     border: 1px solid var(--amber);
     border-radius: 9px;
@@ -796,6 +797,16 @@
         </div>
         <p class="settingsNote likesEmpty" id="likesEmpty">Nothing yet. Tap the heart under a song while it plays and it lands here.</p>
         <ul class="likesList" id="likesList"></ul>
+        <div class="syncBox" id="backupBox">
+          <span class="settingsLabel">Save or load a list file</span>
+          <p class="settingsNote">For a device that can't sync, such as a work laptop. Export downloads your liked songs as a file you can send to yourself. Import adds the songs from such a file to the list on this device.</p>
+          <div class="syncBtns">
+            <button class="pillBtn" id="exportBtn" type="button">Export list</button>
+            <button class="pillBtn quiet" id="importBtn" type="button">Import list</button>
+          </div>
+          <input type="file" id="importFile" accept=".json,application/json" hidden>
+          <p class="settingsNote" id="backupNote"></p>
+        </div>
         <div class="syncBox" id="syncBox" hidden>
           <span class="settingsLabel">Sync across devices</span>
           <div id="syncOff">
@@ -1983,6 +1994,75 @@
   document.getElementById('syncCopy').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(syncCode); setSyncMessage('Code copied.'); }
     catch(e){ setSyncMessage('Press and hold the code above to copy it.'); }
+  });
+
+  // ---------- Liked songs: export / import a file ----------
+  // For a device that can't reach the relay: download the list, move the file however you like,
+  // import it on another device. Import merges with the same newest-wins rule as sync.
+  const MAX_IMPORT = 2000;
+  const backupNote = document.getElementById('backupNote');
+  const importFile = document.getElementById('importFile');
+
+  // A song from a file we didn't write ourselves: keep only known fields, as plain text.
+  function cleanImported(r){
+    if(!r || typeof r !== 'object') return null;
+    const text = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
+    const title = text(r.title, 200).trim();
+    if(!title) return null;
+    const artist = text(r.artist, 200);
+    const ts = isFinite(Number(r.ts)) ? Math.floor(Number(r.ts)) : (isFinite(Number(r.at)) ? Math.floor(Number(r.at)) : Date.now());
+    return {
+      id: likeId(artist, title), title: title, artist: artist,
+      cover: /^https:\/\//.test(r.cover) ? text(r.cover, 500) : '',
+      query: text(r.query, 400), station: text(r.station, 100),
+      at: isFinite(Number(r.at)) ? Math.floor(Number(r.at)) : ts, ts: ts
+    };
+  }
+
+  function exportLikes(){
+    const live = likes.filter(r => !r.del).sort((a, b) => b.at - a.at);
+    if(!live.length){ backupNote.textContent = 'Nothing to export yet.'; return; }
+    const payload = { app: 'dial', version: 1, exported: new Date().toISOString(), songs: live };
+    const blob = new Blob([JSON.stringify(payload, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'dial-liked-songs-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    backupNote.textContent = 'Saved ' + live.length + (live.length === 1 ? ' song' : ' songs') + ' to a file.';
+  }
+
+  async function importLikes(file){
+    try {
+      if(file.size > 2000000) throw new Error('big');
+      const data = JSON.parse(await file.text());
+      const list = Array.isArray(data) ? data : (data && Array.isArray(data.songs) ? data.songs : null);
+      if(!list) throw new Error('shape');
+      const incoming = list.slice(0, MAX_IMPORT).map(cleanImported).filter(Boolean);
+      if(!incoming.length){ backupNote.textContent = 'No songs found in that file.'; return; }
+      const before = new Set(likes.filter(r => !r.del).map(r => r.id));
+      likes = mergeLikes(likes, incoming);
+      const added = likes.filter(r => !r.del && !before.has(r.id)).length;
+      saveLikes();
+      refreshLikeBtn();
+      renderLikes();
+      scheduleSync();
+      backupNote.textContent = added
+        ? 'Added ' + added + (added === 1 ? ' song.' : ' songs.')
+        : 'Nothing new: those songs were already here.';
+    } catch(e){
+      backupNote.textContent = 'That doesn’t look like a Dial list file.';
+    }
+  }
+
+  document.getElementById('exportBtn').addEventListener('click', exportLikes);
+  document.getElementById('importBtn').addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', () => {
+    const f = importFile.files && importFile.files[0];
+    importFile.value = '';
+    if(f) importLikes(f);
   });
   document.addEventListener('visibilitychange', () => { if(!document.hidden) syncIfStale(); });
   renderLikes();
