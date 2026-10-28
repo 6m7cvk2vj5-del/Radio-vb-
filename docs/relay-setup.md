@@ -31,10 +31,35 @@ Adding stations to Dial needs no change to the relay. It re-reads the published 
 every 10 minutes and allows whatever station hosts are listed there, so a new station works once
 GitHub Pages has published it and the relay's list refreshes (allow about 10-15 minutes).
 
-You only touch the Worker again if `relay/worker.js` itself changes: paste the new version into
+You only touch the Worker again if `relay/worker.js` itself changes (it did when Liked songs sync was added): paste the new version into
 the same Worker and press Deploy. The two things hardcoded in it are the Dial page address
 (`PAGE_URL`) and the extra JSON hosts (`api.radioparadise.com` and `api.radiofrance.fr`, in `JSON_HOSTS`). If the Dial
 page ever moves to a new address, or you want another JSON source, those are what to edit.
+
+## Turn on "Liked songs" sync (optional, one-time, about 5 minutes)
+
+Dial's heart button and Liked songs list work without this, but only on the device that saved
+them. To share the list between your phone and your computer, the relay needs somewhere to keep
+it. Cloudflare's free KV storage does that.
+
+1. In the Cloudflare dashboard open **Storage & databases** → **KV** → **Create a namespace**.
+   Name it `dial-likes`.
+2. Open your Worker (**Workers & Pages** → `dial-relay`) → **Settings** → **Bindings** →
+   **Add** → **KV namespace**. Set the variable name to exactly `LIKES` and pick `dial-likes`.
+   Save.
+3. Paste the latest `relay/worker.js` into the Worker (**Edit code**) and press **Deploy**.
+4. In Dial, tap the heart in the top bar → **Turn on sync**. It shows a code; on the other device
+   open the same heart panel → **I have a code** and type it in.
+
+How it works: the code is a random secret. Each device sends its list with the code; the relay
+merges it with what it holds and sends the merged list back, so likes and removals reach every
+device. Only a hash of the code is used as the storage key. Anyone who has the code can see and
+change that list, so treat it like a password. A list nobody syncs for about 13 months is deleted.
+Free-plan limits (1,000 writes a day) are far above normal use because the relay only writes when
+the list actually changed.
+
+If the panel says "Sync isn't set up on the relay yet", the `LIKES` binding or the new code is
+missing (steps 2 and 3). Sync only works from the real Dial page, not from preview links.
 
 ## Limits
 
