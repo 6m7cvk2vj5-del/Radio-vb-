@@ -311,7 +311,7 @@
     flex-wrap: wrap;
     gap: 4px 14px;
   }
-  .shareBtn, .searchBtn{
+  .shareBtn, .searchBtn, .likeBtn{
     display: none;
     appearance: none;
     background: none;
@@ -325,7 +325,90 @@
     letter-spacing: 0.03em;
     color: var(--amber);
   }
-  .shareBtn svg, .searchBtn svg{ width: 12px; height: 12px; }
+  .shareBtn svg, .searchBtn svg, .likeBtn svg{ width: 12px; height: 12px; }
+  .likeBtn.liked svg{ fill: currentColor; }
+
+  /* Liked songs panel (reuses the settings sheet) */
+  .likesPanel{
+    max-height: 88vh;
+    max-height: 88dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .likesList{ list-style: none; margin: 0; padding: 0; }
+  .likeRow{ border-bottom: 1px solid var(--hairline); }
+  .likeHead{ display: flex; align-items: center; gap: 12px; padding: 11px 0; }
+  .likeThumb{
+    width: 40px; height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: var(--panel-2);
+    flex-shrink: 0;
+  }
+  .likeThumb.none{ display: none; }
+  .likeMain{ flex: 1; min-width: 0; }
+  .likeTitle{
+    margin: 0;
+    font-size: calc(14px * var(--font-scale));
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .likeMeta{
+    margin: 2px 0 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: calc(11px * var(--font-scale));
+    color: var(--text-dim);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .likeFind, .likeDel, .pillBtn{
+    appearance: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: calc(11px * var(--font-scale));
+    letter-spacing: 0.03em;
+    color: var(--amber);
+    padding: 6px 4px;
+  }
+  .likeDel{ color: var(--text-dim); font-size: calc(14px * var(--font-scale)); }
+  .likeRow .likeLinks{ display: none; padding: 0 0 12px; }
+  .likeRow.open .likeLinks{ display: grid; }
+  .likesEmpty{ margin: 4px 0 8px !important; }
+  .syncBox{ margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hairline); }
+  .syncBox[hidden], .syncBox [hidden]{ display: none; }
+  .syncBox > .settingsLabel{ display: block; margin-bottom: 12px; }
+  .syncBtns{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .pillBtn{
+    border: 1px solid var(--amber);
+    border-radius: 9px;
+    padding: 8px 12px;
+  }
+  .pillBtn:active{ background: var(--amber); color: var(--bg); }
+  .pillBtn.quiet{ border-color: var(--hairline); color: var(--text-dim); }
+  .syncCode{
+    margin: 8px 0 6px !important;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: calc(17px * var(--font-scale));
+    letter-spacing: 0.08em;
+    color: var(--text);
+    user-select: all;
+    -webkit-user-select: all;
+  }
+  .syncForm{ display: flex; gap: 8px; margin-top: 10px; }
+  .syncInput{
+    flex: 1; min-width: 0;
+    padding: 9px 10px;
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: 9px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    text-transform: uppercase;
+  }
   /* The service picker sits on top of the player card, covering the song and controls. */
   .pickerPop{
     position: absolute;
@@ -658,6 +741,9 @@
       <span class="brand">DIAL</span>
       <div class="headerRight">
         <span class="live-indicator" id="liveIndicator"><span class="dot"></span>LIVE</span>
+        <button class="gearBtn" id="likesBtn" aria-label="Liked songs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z"></path></svg>
+        </button>
         <button class="gearBtn" id="settingsBtn" aria-label="Settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         </button>
@@ -702,6 +788,41 @@
       </div>
     </div>
 
+    <div class="settingsOverlay" id="likesOverlay">
+      <div class="settingsPanel likesPanel">
+        <div class="settingsHeader">
+          <span>Liked songs</span>
+          <button class="settingsClose" id="likesClose" aria-label="Close">✕</button>
+        </div>
+        <p class="settingsNote likesEmpty" id="likesEmpty">Nothing yet. Tap the heart under a song while it plays and it lands here.</p>
+        <ul class="likesList" id="likesList"></ul>
+        <div class="syncBox" id="syncBox" hidden>
+          <span class="settingsLabel">Sync across devices</span>
+          <div id="syncOff">
+            <p class="settingsNote">Keeps this list the same on your phone and your computer. Turn it on here, then enter the code on the other device.</p>
+            <div class="syncBtns">
+              <button class="pillBtn" id="syncStart" type="button">Turn on sync</button>
+              <button class="pillBtn quiet" id="syncHave" type="button">I have a code</button>
+            </div>
+            <form class="syncForm" id="syncForm" hidden>
+              <input class="syncInput" id="syncInput" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Sync code">
+              <button class="pillBtn" type="submit">Connect</button>
+            </form>
+          </div>
+          <div id="syncOn" hidden>
+            <p class="syncCode" id="syncCodeText"></p>
+            <p class="settingsNote">Enter this code on your other devices. Anyone who has it can see and change this list.</p>
+            <p class="settingsNote" id="syncStatus"></p>
+            <div class="syncBtns">
+              <button class="pillBtn" id="syncNow" type="button">Sync now</button>
+              <button class="pillBtn quiet" id="syncCopy" type="button">Copy code</button>
+              <button class="pillBtn quiet" id="syncOffBtn" type="button">Turn off</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <main>
       <div class="now-playing">
         <h1 id="stationName">Pick a preset</h1>
@@ -725,6 +846,10 @@
               <p class="trackTitle" id="trackTitle">Nothing playing</p>
               <p class="trackArtist" id="trackArtist"></p>
               <div class="trackActions">
+                <button class="likeBtn" id="likeBtn" type="button" aria-pressed="false" aria-label="Like this song">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z"></path></svg>
+                  <span id="likeLabel">Like</span>
+                </button>
                 <button class="searchBtn" id="searchBtn" type="button" aria-haspopup="dialog">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
                   Search with&hellip;
@@ -1164,6 +1289,9 @@
   const searchBtn = document.getElementById('searchBtn');
   const shareBtn = document.getElementById('shareBtn');
   const shareLabel = document.getElementById('shareLabel');
+  const likeBtn = document.getElementById('likeBtn');
+  const likeLabel = document.getElementById('likeLabel');
+  let currentSong = null;   // the song on the card, or null when there isn't one to like
 
   function pad(n){ return String(n).padStart(2, '0'); }
 
@@ -1483,6 +1611,8 @@
     searchBtn.style.display = 'none';
     shareBtn.style.display = 'none';
     searchQuery = '';
+    currentSong = null;
+    refreshLikeBtn();
   }
 
   function showTrackCard(title, artist, coverUrl, spotifyQuery){
@@ -1502,11 +1632,14 @@
       searchBtn.style.display = 'inline-flex';
       shareBtn.style.display = 'inline-flex';
       shareText = artist ? artist + ' \u2013 ' + title : title;
+      currentSong = { title: title, artist: artist || '', cover: coverUrl || '', query: spotifyQuery };
     } else {
       searchBtn.style.display = 'none';
       shareBtn.style.display = 'none';
       searchQuery = '';
+      currentSong = null;
     }
+    refreshLikeBtn();
   }
 
   // "Search with..." popup: one row per service, each opening a search for the current song.
@@ -1605,6 +1738,256 @@
   }
 
   shareBtn.addEventListener('click', () => openPicker('share'));
+
+  // ---------- Liked songs ----------
+  // Each liked song is a small record. A song you un-like stays in the list as a tombstone
+  // ({id, ts, del: true}) so the deletion reaches your other devices when they sync.
+  const LIKES_KEY = 'dial-likes';
+  const SYNC_CODE_KEY = 'dial-sync-code';
+  const TOMBSTONE_MS = 60 * 86400000;
+  let likes = [];
+  let syncCode = '';
+  try {
+    likes = JSON.parse(localStorage.getItem(LIKES_KEY) || '[]');
+    if(!Array.isArray(likes)) likes = [];
+    syncCode = localStorage.getItem(SYNC_CODE_KEY) || '';
+  } catch(e){ likes = []; }
+
+  const likesOverlay = document.getElementById('likesOverlay');
+  const likesList = document.getElementById('likesList');
+  const likesEmpty = document.getElementById('likesEmpty');
+  let openLikeId = null;
+
+  function saveLikes(){
+    try { localStorage.setItem(LIKES_KEY, JSON.stringify(likes)); } catch(e){}
+  }
+
+  // Same song, same id, whichever station it came from: artist + title, letters and digits only.
+  function likeId(artist, title){
+    return ((artist || '') + ' ' + title).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().slice(0, 200);
+  }
+  function findLike(id){ return likes.find(r => r.id === id); }
+  function isLiked(id){ const r = findLike(id); return !!r && !r.del; }
+
+  // Per id, the record with the newest ts wins. relay/worker.js has the same rule (mergeLikes).
+  function mergeLikes(a, b){
+    const byId = new Map();
+    a.concat(b).forEach(r => {
+      if(!r || !r.id || !isFinite(r.ts)) return;
+      const cur = byId.get(r.id);
+      if(!cur || r.ts > cur.ts || (r.ts === cur.ts && r.del && !cur.del)) byId.set(r.id, r);
+    });
+    const cutoff = Date.now() - TOMBSTONE_MS;
+    return [...byId.values()].filter(r => !r.del || r.ts > cutoff);
+  }
+
+  function refreshLikeBtn(){
+    const show = !!currentSong;
+    likeBtn.style.display = show ? 'inline-flex' : 'none';
+    if(!show) return;
+    const on = isLiked(likeId(currentSong.artist, currentSong.title));
+    likeBtn.classList.toggle('liked', on);
+    likeBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    likeLabel.textContent = on ? 'Liked' : 'Like';
+  }
+
+  function setLike(rec){
+    const prev = findLike(rec.id);
+    // Never lower than what's already there, even if another device's clock runs ahead.
+    rec.ts = Math.max(Date.now(), prev ? prev.ts + 1 : 0);
+    if(!rec.del) rec.at = rec.ts;
+    likes = likes.filter(r => r.id !== rec.id).concat(rec);
+    saveLikes();
+    refreshLikeBtn();
+    renderLikes();
+    scheduleSync();
+  }
+
+  function toggleLike(){
+    if(!currentSong) return;
+    const id = likeId(currentSong.artist, currentSong.title);
+    if(isLiked(id)){ setLike({ id: id, del: true }); return; }
+    const st = currentIndex !== null ? stations[currentIndex] : null;
+    setLike({
+      id: id, title: currentSong.title, artist: currentSong.artist, cover: currentSong.cover,
+      query: currentSong.query, station: st ? st.name : ''
+    });
+  }
+  likeBtn.addEventListener('click', toggleLike);
+
+  function renderLikes(){
+    const live = likes.filter(r => !r.del).sort((a, b) => b.at - a.at);
+    likesEmpty.hidden = live.length > 0;
+    likesList.innerHTML = '';
+    live.forEach(r => {
+      const q = r.query || ((r.artist ? r.artist + ' ' : '') + r.title);
+      const li = document.createElement('li');
+      li.className = 'likeRow' + (r.id === openLikeId ? ' open' : '');
+
+      const head = document.createElement('div');
+      head.className = 'likeHead';
+      const thumb = document.createElement('img');
+      thumb.className = 'likeThumb' + (r.cover ? '' : ' none');
+      thumb.alt = '';
+      if(r.cover){ thumb.onerror = () => thumb.classList.add('none'); thumb.src = r.cover; }
+      const main = document.createElement('div');
+      main.className = 'likeMain';
+      const t = document.createElement('p');
+      t.className = 'likeTitle';
+      t.textContent = r.title;
+      const m = document.createElement('p');
+      m.className = 'likeMeta';
+      const when = new Date(r.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      m.textContent = [r.artist, r.station, when].filter(Boolean).join(' · ');
+      main.appendChild(t); main.appendChild(m);
+      const find = document.createElement('button');
+      find.type = 'button';
+      find.className = 'likeFind';
+      find.textContent = 'Find';
+      find.setAttribute('aria-expanded', r.id === openLikeId ? 'true' : 'false');
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'likeDel';
+      del.textContent = '✕';
+      del.setAttribute('aria-label', 'Remove ' + r.title);
+      head.appendChild(thumb); head.appendChild(main); head.appendChild(find); head.appendChild(del);
+
+      const links = document.createElement('ul');
+      links.className = 'searchOptions likeLinks';
+      SEARCH_SERVICES.forEach(svc => {
+        const item = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = svc.url(q);
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = svc.name;
+        if(svc.name === 'Apple Music' && r.id === openLikeId){
+          lookupAppleMusic(q).then(url => { if(url) a.href = url; });
+        }
+        item.appendChild(a);
+        links.appendChild(item);
+      });
+
+      find.addEventListener('click', () => { openLikeId = openLikeId === r.id ? null : r.id; renderLikes(); });
+      del.addEventListener('click', () => setLike({ id: r.id, del: true }));
+      li.appendChild(head); li.appendChild(links);
+      likesList.appendChild(li);
+    });
+  }
+
+  function openLikes(){ renderLikes(); renderSync(); likesOverlay.classList.add('open'); syncIfStale(); }
+  function closeLikes(){ likesOverlay.classList.remove('open'); }
+  document.getElementById('likesBtn').addEventListener('click', openLikes);
+  document.getElementById('likesClose').addEventListener('click', closeLikes);
+  likesOverlay.addEventListener('click', (e) => { if(e.target === likesOverlay) closeLikes(); });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeLikes(); });
+
+  // ---------- Liked songs: sync between devices ----------
+  // The sync code is a secret that picks a list on the relay. Every device that has the code
+  // sends its list and gets the merged one back. Needs the relay (RELAY_URL) with its LIKES store.
+  const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O/1/I to misread
+  const syncBox = document.getElementById('syncBox');
+  const syncOff = document.getElementById('syncOff');
+  const syncOn = document.getElementById('syncOn');
+  const syncForm = document.getElementById('syncForm');
+  const syncInput = document.getElementById('syncInput');
+  const syncStatus = document.getElementById('syncStatus');
+  let syncing = false, syncAgain = false, syncTimer = null, lastSyncAt = 0, syncMessage = '';
+
+  function newSyncCode(){
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    const chars = Array.from(bytes, b => CODE_ALPHABET[b % 32]);
+    return [0, 4, 8, 12].map(i => chars.slice(i, i + 4).join('')).join('-');
+  }
+  function cleanSyncCode(text){
+    const raw = (text || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if(raw.length !== 16) return '';
+    return [0, 4, 8, 12].map(i => raw.slice(i, i + 4)).join('-');
+  }
+
+  function renderSync(){
+    syncBox.hidden = !RELAY_URL;
+    syncOff.hidden = !!syncCode;
+    syncOn.hidden = !syncCode;
+    document.getElementById('syncCodeText').textContent = syncCode;
+    syncStatus.textContent = syncMessage || (lastSyncAt ? 'Synced at ' + new Date(lastSyncAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
+  }
+  function setSyncMessage(text){ syncMessage = text; renderSync(); }
+
+  async function syncLikes(){
+    if(!syncCode || !RELAY_URL) return;
+    if(syncing){ syncAgain = true; return; }
+    syncing = true;
+    setSyncMessage('Syncing…');
+    try {
+      const res = await fetch(RELAY_URL.replace(/\/$/, '') + '/likes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: syncCode, items: likes }),
+        signal: AbortSignal.timeout(15000)
+      });
+      if(res.status === 501) throw { userMessage: 'Sync isn’t set up on the relay yet (see docs/relay-setup.md).' };
+      if(res.status === 403) throw { userMessage: 'Sync only works from the real Dial page.' };
+      if(!res.ok) throw { userMessage: 'Couldn’t sync just now; it will retry.' };
+      const data = await res.json();
+      // Merge rather than replace: a like tapped while this request was in flight must survive.
+      likes = mergeLikes(likes, Array.isArray(data.items) ? data.items : []);
+      saveLikes();
+      lastSyncAt = Date.now();
+      syncMessage = '';
+      refreshLikeBtn();
+      renderLikes();
+    } catch(e){
+      syncMessage = (e && e.userMessage) || 'Couldn’t reach the relay; it will retry.';
+    } finally {
+      syncing = false;
+      renderSync();
+      if(syncAgain){ syncAgain = false; scheduleSync(); }
+    }
+  }
+
+  function scheduleSync(){
+    if(!syncCode) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(syncLikes, 1500);
+  }
+  function syncIfStale(){
+    if(syncCode && Date.now() - lastSyncAt > 30000) syncLikes();
+  }
+
+  function setSyncCode(code){
+    syncCode = code;
+    try { if(code) localStorage.setItem(SYNC_CODE_KEY, code); else localStorage.removeItem(SYNC_CODE_KEY); } catch(e){}
+    syncMessage = '';
+    renderSync();
+    if(code) syncLikes();
+  }
+
+  document.getElementById('syncStart').addEventListener('click', () => setSyncCode(newSyncCode()));
+  document.getElementById('syncHave').addEventListener('click', () => {
+    syncForm.hidden = !syncForm.hidden;
+    if(!syncForm.hidden) syncInput.focus();
+  });
+  syncForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const code = cleanSyncCode(syncInput.value);
+    if(!code){ setSyncMessage('That code should have 16 letters and numbers.'); syncOff.hidden = false; return; }
+    syncInput.value = '';
+    syncForm.hidden = true;
+    setSyncCode(code);
+  });
+  document.getElementById('syncNow').addEventListener('click', syncLikes);
+  document.getElementById('syncOffBtn').addEventListener('click', () => {
+    if(confirm('Stop syncing on this device? Your list stays here.')) setSyncCode('');
+  });
+  document.getElementById('syncCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(syncCode); setSyncMessage('Code copied.'); }
+    catch(e){ setSyncMessage('Press and hold the code above to copy it.'); }
+  });
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) syncIfStale(); });
+  renderLikes();
+  renderSync();
+  syncLikes();
 
   async function fetchFipNow(id){
     // Ask through the relay first: some networks (work VPNs, filters) block radiofrance.fr's API

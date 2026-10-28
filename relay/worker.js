@@ -6,6 +6,10 @@
 //   GET /json?u=<https json url>    passes a JSON response through with CORS allowed
 //   GET /fip?slug=fip/radio-pop     latest track on a FIP webradio, read from radiofrance.fr's
 //                                   own site (an unofficial endpoint that could change)
+//   POST /likes                     syncs the "Liked songs" list between devices: the page sends
+//                                   {code, items}, the relay merges that into what it holds for
+//                                   the code and answers with the merged list. Needs a KV
+//                                   namespace bound to this Worker as LIKES (docs/relay-setup.md).
 //
 // It is NOT an open proxy: it only talks to hosts that appear as station URLs in the live Dial
 // page (PAGE_URL), so adding a station to index.html needs no change here, and it only answers
@@ -83,7 +87,7 @@ function reply(body, status, extra) {
     headers: Object.assign({
       'Content-Type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': ORIGIN,
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Vary': 'Origin',
       'Cache-Control': 'public, max-age=10',
     }, extra || {}),
@@ -257,12 +261,84 @@ async function fipLatest(slug) {
   return null;
 }
 
+// ---------- Liked songs sync ----------
+// The list is a set of records {id, title, artist, cover, query, station, at, ts, del?}. `ts` is
+// the last time the record changed; a deleted song stays as a tombstone (del: true) so the
+// deletion reaches the other devices. Merging keeps, per id, whichever record has the newest ts.
+// The same rule lives in index.html (mergeLikes) — keep the two in step.
+const CODE_RE = /^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/;
+const MAX_LIKES = 2000;
+const MAX_BODY_BYTES = 400000;
+const TOMBSTONE_MS = 60 * 86400000;
+const LIKES_TTL_S = 400 * 86400;   // an untouched list expires after about 13 months
+
+function cleanText(v, max) {
+  return typeof v === 'string' ? v.slice(0, max) : '';
+}
+
+function cleanLike(r) {
+  if (!r || typeof r !== 'object') return null;
+  const id = cleanText(r.id, 200);
+  const ts = Number(r.ts);
+  if (!id || !isFinite(ts)) return null;
+  const out = { id, ts: Math.floor(ts) };
+  if (r.del) { out.del = true; return out; }
+  out.title = cleanText(r.title, 200);
+  if (!out.title) return null;
+  out.artist = cleanText(r.artist, 200);
+  out.query = cleanText(r.query, 400);
+  out.station = cleanText(r.station, 100);
+  out.cover = /^https:\/\//.test(r.cover) ? cleanText(r.cover, 500) : '';
+  out.at = isFinite(Number(r.at)) ? Math.floor(Number(r.at)) : out.ts;
+  return out;
+}
+
+function mergeLikes(a, b) {
+  const byId = new Map();
+  for (const r of [].concat(a || [], b || [])) {
+    const c = cleanLike(r);
+    if (!c) continue;
+    const cur = byId.get(c.id);
+    if (!cur || c.ts > cur.ts || (c.ts === cur.ts && c.del && !cur.del)) byId.set(c.id, c);
+  }
+  const cutoff = Date.now() - TOMBSTONE_MS;
+  const out = [...byId.values()].filter(r => !r.del || r.ts > cutoff);
+  out.sort((x, y) => y.ts - x.ts);
+  return out.slice(0, MAX_LIKES);
+}
+
+async function likeKey(code) {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('dial-likes:' + code));
+  return 'likes:' + [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function syncLikes(req, env) {
+  if (!env || !env.LIKES) return reply({ error: 'sync not set up' }, 501, { 'Cache-Control': 'no-store' });
+  const text = await req.text();
+  if (text.length > MAX_BODY_BYTES) return reply({ error: 'too large' }, 413, { 'Cache-Control': 'no-store' });
+  let body;
+  try { body = JSON.parse(text); } catch (e) { return reply({ error: 'bad json' }, 400, { 'Cache-Control': 'no-store' }); }
+  const code = body && typeof body.code === 'string' ? body.code.trim().toUpperCase() : '';
+  if (!CODE_RE.test(code) || !Array.isArray(body.items)) return reply({ error: 'bad request' }, 400, { 'Cache-Control': 'no-store' });
+
+  const key = await likeKey(code);
+  const storedText = await env.LIKES.get(key);
+  let stored = [];
+  try { stored = storedText ? JSON.parse(storedText) : []; } catch (e) {}
+  const merged = mergeLikes(stored, body.items);
+  const mergedText = JSON.stringify(merged);
+  // Write only when something changed (KV's free plan allows 1,000 writes a day).
+  if (mergedText !== storedText) await env.LIKES.put(key, mergedText, { expirationTtl: LIKES_TTL_S });
+  return reply({ items: merged }, 200, { 'Cache-Control': 'no-store' });
+}
+
 export default {
-  async fetch(req) {
+  async fetch(req, env) {
     if (req.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: {
         'Access-Control-Allow-Origin': ORIGIN,
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
         'Vary': 'Origin',
       } });
     }
@@ -271,9 +347,15 @@ export default {
     // allowlists below are what actually limit what this can reach.)
     const origin = req.headers.get('Origin');
     if (origin && origin !== ORIGIN) return reply({ error: 'forbidden' }, 403);
-    if (req.method !== 'GET') return reply({ error: 'method not allowed' }, 405);
-
     const url = new URL(req.url);
+
+    if (url.pathname === '/likes') {
+      // Unlike the read-only calls, this stores data, so a real Dial page (Origin header) is required.
+      if (req.method !== 'POST' || origin !== ORIGIN) return reply({ error: 'forbidden' }, 403);
+      try { return await syncLikes(req, env); } catch (e) { return reply({ error: 'sync failed' }, 502, { 'Cache-Control': 'no-store' }); }
+    }
+
+    if (req.method !== 'GET') return reply({ error: 'method not allowed' }, 405);
 
     if (url.pathname === '/fip') {
       const slug = url.searchParams.get('slug') || '';
