@@ -58,6 +58,11 @@ change that list, so treat it like a password. A list nobody syncs for about 13 
 Free-plan limits (1,000 writes a day) are far above normal use because the relay only writes when
 the list actually changed.
 
+The **Recently played** list (clock icon in the top bar) syncs the same way, with the same code and the
+same `LIKES` namespace; it needs only the latest `relay/worker.js` (step 3). Dial batches plays into
+one sync a minute so the free-plan write allowance is not a worry. If that list says the relay needs
+the latest worker.js, paste it in and press Deploy.
+
 If the panel says "Sync isn't set up on the relay yet", the `LIKES` binding or the new code is
 missing (steps 2 and 3). Sync only works from the real Dial page, not from preview links.
 
