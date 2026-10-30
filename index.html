@@ -536,6 +536,7 @@
     color: var(--text-dim);
   }
   .volRow[hidden]{ display: none; }
+  .volRow.unavailable{ opacity: 0.4; }
   .volRow svg{ width: 16px; height: 16px; flex: none; }
   .volRow .scrubRange{ flex: 1; }
 
@@ -1314,24 +1315,136 @@
   let npTimer = null;
   let npRequestId = 0;
 
-  const audio = document.getElementById('audio');
+  let audio = document.getElementById('audio');
+
+  // Listeners are recorded so a fresh <audio> element can be swapped in (see swapAudioElement).
+  const audioListeners = [];
+  function trackAudioListeners(el){
+    const add = el.addEventListener.bind(el);
+    const remove = el.removeEventListener.bind(el);
+    el.addEventListener = (type, fn, opts) => { audioListeners.push([type, fn, opts]); add(type, fn, opts); };
+    el.removeEventListener = (type, fn, opts) => {
+      const i = audioListeners.findIndex(l => l[0] === type && l[1] === fn);
+      if(i !== -1) audioListeners.splice(i, 1);
+      remove(type, fn, opts);
+    };
+  }
+  trackAudioListeners(audio);
 
   // In-app volume, separate from the phone's hardware volume. `fadeLevel` is the 0..1
-  // level the loop-fade code drives; the element's volume is fadeLevel * userVolume so
+  // level the loop-fade code drives; the output level is fadeLevel * userVolume so
   // fades keep working at any slider position.
+  //
+  // Where audio.volume works, that is all there is to it. iOS Safari ignores it (always
+  // reads back 1), so there the stream is routed through a Web Audio GainNode instead.
+  // That needs the stream to send CORS headers (otherwise Web Audio outputs silence), so
+  // it is only switched on once the slider is moved off 100%, stations that fail the CORS
+  // load fall back to plain playback with the slider dimmed, and HLS streams (which Safari
+  // can't route through Web Audio) are never routed.
   let userVolume = 1;
   let fadeLevel = 1;
-  function applyVolume(){ audio.volume = fadeLevel * userVolume; }
+  let volSupported = true;
+  let graphCtx = null, gainNode = null, graphEl = null;
+  const noGainHosts = new Set();
+  const volRow = document.getElementById('volRow');
+  const volRange = document.getElementById('volRange');
+
+  function applyVolume(){
+    const v = fadeLevel * userVolume;
+    if(graphEl === audio && gainNode){
+      gainNode.gain.setTargetAtTime(v, graphCtx.currentTime, 0.015);
+    } else {
+      audio.volume = v;
+    }
+  }
   function setFadeLevel(l){ fadeLevel = l; applyVolume(); }
+
+  function gainHost(url){
+    try{ return new URL(url, location.href).host; } catch(e){ return url; }
+  }
+  function canUseGain(url){ return !isHls(url) && !noGainHosts.has(gainHost(url)); }
+  function wantGraph(url){
+    return !volSupported && (userVolume < 1 || graphEl === audio) && canUseGain(url);
+  }
+
+  function ensureGraph(){
+    try{
+      if(!graphCtx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+        graphCtx = new AC();
+        gainNode = graphCtx.createGain();
+        gainNode.gain.value = fadeLevel * userVolume;
+        gainNode.connect(graphCtx.destination);
+        // Keep playing with the ringer switch on and in the background, like a plain <audio>.
+        if(navigator.audioSession){ try{ navigator.audioSession.type = 'playback'; } catch(e){} }
+      }
+      if(graphCtx.state !== 'running') graphCtx.resume().catch(() => {});
+      if(graphEl !== audio){
+        graphCtx.createMediaElementSource(audio).connect(gainNode);
+        graphEl = audio;
+      }
+      return true;
+    } catch(e){ return false; }
+  }
+
+  // An element that has been bound to a Web Audio node can't play a non-CORS stream
+  // (it outputs silence), so those get a fresh element carrying the same listeners.
+  function swapAudioElement(){
+    const old = audio;
+    const fresh = document.createElement('audio');
+    fresh.id = 'audio';
+    fresh.preload = 'none';
+    audioListeners.forEach(([type, fn, opts]) => {
+      EventTarget.prototype.removeEventListener.call(old, type, fn, opts);
+      EventTarget.prototype.addEventListener.call(fresh, type, fn, opts);
+    });
+    old.pause();
+    old.removeAttribute('src');
+    old.load();
+    old.replaceWith(fresh);
+    trackAudioListeners(fresh);
+    audio = fresh;
+  }
+
+  // Run before every stream load: sets the element up for whichever volume route applies.
+  function prepareAudioElement(url){
+    if(volSupported) return;
+    if(wantGraph(url)){
+      audio.crossOrigin = 'anonymous';
+      if(ensureGraph()){ applyVolume(); volRow.classList.remove('unavailable'); return; }
+      noGainHosts.add(gainHost(url));
+    }
+    if(graphEl === audio) swapAudioElement();
+    audio.removeAttribute('crossorigin');
+    applyVolume();
+    volRow.classList.toggle('unavailable', !canUseGain(url));
+  }
+
+  // Reload what's currently selected (used when the volume route changes mid-stream).
+  function reloadCurrent(){
+    if(currentIndex === null || !currentPlayUrl) return;
+    const resumeAt = (isFinite(audio.duration) && audio.duration > 0) ? audio.currentTime : null;
+    prepareAudioElement(currentPlayUrl);
+    audio.src = currentPlayUrl;
+    if(resumeAt !== null){
+      const resumeOnce = () => {
+        audio.currentTime = resumeAt;
+        audio.removeEventListener('loadedmetadata', resumeOnce);
+      };
+      audio.addEventListener('loadedmetadata', resumeOnce);
+    }
+    if(userWantsPlaying){
+      statusEl.textContent = 'Connecting…';
+      audio.play().catch(() => {});
+      armConnectWatchdog();
+      markProgress();
+    }
+  }
+
   (function initVolume(){
-    const volRow = document.getElementById('volRow');
-    const volRange = document.getElementById('volRange');
-    // iOS Safari ignores audio.volume (always reads back 1), so a slider there would
-    // do nothing — leave it hidden rather than show a dead control.
     audio.volume = 0.5;
-    const supported = audio.volume === 0.5;
+    volSupported = audio.volume === 0.5;
     audio.volume = 1;
-    if(!supported) return;
     try{
       const saved = parseFloat(localStorage.getItem('dial-volume'));
       if(isFinite(saved)) userVolume = Math.min(1, Math.max(0, saved));
@@ -1344,6 +1457,16 @@
       applyVolume();
       try{ localStorage.setItem('dial-volume', String(userVolume)); } catch(e){}
     });
+    if(!volSupported){
+      // Switching the route reloads the stream, and the audio context may only be started
+      // from a real tap, so do it when the finger lifts rather than mid-drag.
+      const engage = () => {
+        if(currentIndex !== null && graphEl !== audio && wantGraph(currentPlayUrl)) reloadCurrent();
+      };
+      volRange.addEventListener('touchend', engage);
+      volRange.addEventListener('pointerup', engage);
+      volRange.addEventListener('change', engage);
+    }
   })();
 
   updateDataUsageDisplay(); // safe now that `audio` above exists — first paint shows "0.0 MB used"
@@ -1553,6 +1676,7 @@
     currentPlayUrl = playUrl;
     currentKbps = currentStreamKbps(s, track);
     updateDataUsageDisplay();
+    prepareAudioElement(playUrl);
     if(audio.src !== playUrl){ audio.src = playUrl; }
     statusEl.textContent = 'Connecting…';
     audio.play().catch(() => {
@@ -1589,6 +1713,7 @@
     // Bug found live: a long archive.org-hosted SLAA talk kept jumping back to the start —
     // that was this function resetting position on every minor stall it recovered from.
     const resumeAt = (isFinite(audio.duration) && audio.duration > 0) ? audio.currentTime : null;
+    prepareAudioElement(base);
     // HLS playlists are already live-edge by nature, and a changing query string just makes
     // each retry a CDN cache miss, so reload the plain URL.
     audio.src = hls ? base : base + sep + '_r=' + Date.now();
@@ -2611,6 +2736,13 @@
   });
 
   audio.addEventListener('error', () => {
+    // A stream loaded for Web Audio (crossorigin) that errors most likely lacks CORS headers:
+    // remember the host and replay it plainly, without the volume route.
+    if(!volSupported && audio.crossOrigin === 'anonymous' && currentPlayUrl){
+      noGainHosts.add(gainHost(currentPlayUrl));
+      reloadCurrent();
+      return;
+    }
     updatePlayIcon(false);
     liveIndicator.classList.remove('on');
     stopNowPlayingPolling();
