@@ -527,6 +527,18 @@
     gap: 18px;
   }
 
+  .volRow{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 240px;
+    color: var(--text-dim);
+  }
+  .volRow[hidden]{ display: none; }
+  .volRow svg{ width: 16px; height: 16px; flex: none; }
+  .volRow .scrubRange{ flex: 1; }
+
   .scrubber{
     display: none;
     width: 100%;
@@ -910,6 +922,11 @@
               <button class="skipBtn" id="prevBtn" disabled aria-label="Previous channel"></button>
               <button class="playBtn" id="playBtn" disabled aria-label="Play"></button>
               <button class="skipBtn" id="nextBtn" disabled aria-label="Next channel"></button>
+            </div>
+            <div class="volRow" id="volRow" hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/></svg>
+              <input type="range" class="scrubRange" id="volRange" min="0" max="100" step="1" value="100" aria-label="Volume">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
             </div>
             <p class="status" id="status"></p>
           </div>
@@ -1298,6 +1315,37 @@
   let npRequestId = 0;
 
   const audio = document.getElementById('audio');
+
+  // In-app volume, separate from the phone's hardware volume. `fadeLevel` is the 0..1
+  // level the loop-fade code drives; the element's volume is fadeLevel * userVolume so
+  // fades keep working at any slider position.
+  let userVolume = 1;
+  let fadeLevel = 1;
+  function applyVolume(){ audio.volume = fadeLevel * userVolume; }
+  function setFadeLevel(l){ fadeLevel = l; applyVolume(); }
+  (function initVolume(){
+    const volRow = document.getElementById('volRow');
+    const volRange = document.getElementById('volRange');
+    // iOS Safari ignores audio.volume (always reads back 1), so a slider there would
+    // do nothing — leave it hidden rather than show a dead control.
+    audio.volume = 0.5;
+    const supported = audio.volume === 0.5;
+    audio.volume = 1;
+    if(!supported) return;
+    try{
+      const saved = parseFloat(localStorage.getItem('dial-volume'));
+      if(isFinite(saved)) userVolume = Math.min(1, Math.max(0, saved));
+    } catch(e){}
+    volRange.value = Math.round(userVolume * 100);
+    applyVolume();
+    volRow.hidden = false;
+    volRange.addEventListener('input', () => {
+      userVolume = volRange.value / 100;
+      applyVolume();
+      try{ localStorage.setItem('dial-volume', String(userVolume)); } catch(e){}
+    });
+  })();
+
   updateDataUsageDisplay(); // safe now that `audio` above exists — first paint shows "0.0 MB used"
 
   // Ticks once a second; only counts while actually playing (userWantsPlaying and not
@@ -1490,7 +1538,7 @@
     reconnectAttempts = 0;
     clearRecoveryTimers();
     fading = false;
-    audio.volume = 1;
+    setFadeLevel(1);
     resetScrubber();
     const s = stations[currentIndex];
     let playUrl = s.url;
@@ -1559,11 +1607,11 @@
   }
 
   function fadeVolumeTo(target, seconds, onComplete){
-    const start = audio.volume;
+    const start = fadeLevel;
     const startTime = performance.now();
     function step(now){
       const t = Math.min(1, (now - startTime) / (seconds * 1000));
-      audio.volume = start + (target - start) * t;
+      setFadeLevel(start + (target - start) * t);
       if(t < 1){ requestAnimationFrame(step); }
       else if(onComplete){ onComplete(); }
     }
@@ -1589,7 +1637,7 @@
         } else {
           audio.currentTime = 0;
         }
-        audio.volume = 0;
+        setFadeLevel(0);
         audio.play().catch(() => {});
         fadeVolumeTo(1, FADE_SECONDS, () => { fading = false; });
       });
