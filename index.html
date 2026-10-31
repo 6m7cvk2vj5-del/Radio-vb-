@@ -531,14 +531,15 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 100%;
-    max-width: 240px;
+    flex: 1;
+    max-width: 200px;
+    margin-left: 16px;
     color: var(--text-dim);
   }
   .volRow[hidden]{ display: none; }
   .volRow.unavailable{ opacity: 0.4; }
   .volRow svg{ width: 16px; height: 16px; flex: none; }
-  .volRow .scrubRange{ flex: 1; }
+  .volRow .scrubRange{ flex: 1; min-width: 0; }
 
   .scrubber{
     display: none;
@@ -793,6 +794,15 @@
           </div>
         </div>
         <div class="settingsRow">
+          <span class="settingsLabel">Volume</span>
+          <div class="volRow" id="volRow" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/></svg>
+            <input type="range" class="scrubRange" id="volRange" min="0" max="100" step="1" value="100" aria-label="Volume">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+          </div>
+        </div>
+        <p class="settingsNote" id="volNote">Adjusts this app only, not your phone's volume.</p>
+        <div class="settingsRow">
           <span class="settingsLabel">Data Saver</span>
           <div class="segmented" id="dataSaverSegmented">
             <button data-value="off">Off</button>
@@ -923,11 +933,6 @@
               <button class="skipBtn" id="prevBtn" disabled aria-label="Previous channel"></button>
               <button class="playBtn" id="playBtn" disabled aria-label="Play"></button>
               <button class="skipBtn" id="nextBtn" disabled aria-label="Next channel"></button>
-            </div>
-            <div class="volRow" id="volRow" hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/></svg>
-              <input type="range" class="scrubRange" id="volRange" min="0" max="100" step="1" value="100" aria-label="Volume">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
             </div>
             <p class="status" id="status"></p>
           </div>
@@ -1359,6 +1364,13 @@
   }
   function setFadeLevel(l){ fadeLevel = l; applyVolume(); }
 
+  const volNote = document.getElementById('volNote');
+  const VOL_NOTE = volNote.textContent;
+  function setVolUnavailable(off){
+    volRow.classList.toggle('unavailable', off);
+    volNote.textContent = off ? "Volume can't be adjusted for the station that's playing (its stream doesn't allow it). The other stations are unaffected." : VOL_NOTE;
+  }
+
   function gainHost(url){
     try{ return new URL(url, location.href).host; } catch(e){ return url; }
   }
@@ -1411,13 +1423,13 @@
     if(volSupported) return;
     if(wantGraph(url)){
       audio.crossOrigin = 'anonymous';
-      if(ensureGraph()){ applyVolume(); volRow.classList.remove('unavailable'); return; }
+      if(ensureGraph()){ applyVolume(); setVolUnavailable(false); return; }
       noGainHosts.add(gainHost(url));
     }
     if(graphEl === audio) swapAudioElement();
     audio.removeAttribute('crossorigin');
     applyVolume();
-    volRow.classList.toggle('unavailable', !canUseGain(url));
+    setVolUnavailable(!canUseGain(url));
   }
 
   // Reload what's currently selected (used when the volume route changes mid-stream).
