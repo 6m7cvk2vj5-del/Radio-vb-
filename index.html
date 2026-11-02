@@ -958,6 +958,7 @@
     { id: 'soma', label: 'SomaFM',         place: 'San Francisco' },
     { id: 'nts',  label: 'NTS',            place: 'London' },
     { id: 'club', label: 'Club',           place: 'Various' },
+    { id: 'throwback', label: 'Throwback', place: 'Various' },
     { id: 'trance', label: 'Trance',       place: 'Moscow' },
     { id: 'piano', label: 'Piano',         place: 'MPR' },
     { id: 'cbc',  label: 'CBC',            place: 'Toronto' },
@@ -1002,7 +1003,7 @@
   // are literal too); the rest are typical figures for that kind of stream, not individually
   // measured — the estimate is a guide for data-plan awareness, not a guarantee.
   const NETWORK_DEFAULT_KBPS = {
-    fip: 128, rp: 192, soma: 128, nts: 128, club: 128, trance: 96, piano: 128,
+    fip: 128, rp: 192, soma: 128, nts: 128, club: 128, throwback: 128, trance: 96, piano: 128,
     cbc: 128, bbc: 96, classical: 128, yoga: 128, meditate: 96, slaa: 96,
   };
 
@@ -1066,6 +1067,19 @@
     { network:'club', name:'Kiosk Radio',     genre:'Electronic · jazz (Brussels)', url:'https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b', now:{type:'airtime', host:'kioskradiobxl.out.airtime.pro'} },
     { network:'club', name:'Sub.FM',          genre:'Dubstep · jungle · techno', url:'https://subfm.radioca.st/Sub.FM' },
     { network:'club', name:'TM Radio',        genre:'Progressive · tech house',  url:'https://stream.tm-radio.com/tribalmixes' },
+
+    // Throwback — decade hit channels (70s–2000s pop). Addresses are from the broadcasters'
+    // public listings but have NOT been test-played yet (added from a sandbox with no outbound
+    // access). Heart is a UK service and may refuse listeners outside the UK. If one is dead,
+    // remove it rather than leave a silent preset.
+    { network:'throwback', name:'Radio Swiss Pop',  genre:'Pop hits · 80s to now (Switzerland)', url:'https://stream.srg-ssr.ch/m/rsp/mp3_128' },
+    { network:'throwback', name:'Heart 80s',        genre:'80s hits (UK)',        url:'https://media-ice.musicradio.com/Heart80sMP3' },
+    { network:'throwback', name:'Heart 90s',        genre:'90s hits (UK)',        url:'https://media-ice.musicradio.com/Heart90sMP3' },
+    { network:'throwback', name:'Heart 70s',        genre:'70s hits (UK)',        url:'https://media-ice.musicradio.com/Heart70sMP3' },
+    { network:'throwback', name:'181.fm Awesome 80s', genre:'80s hits (US)',      url:'https://listen.181fm.com/181-awesome80s_128k.mp3' },
+    { network:'throwback', name:'181.fm Star 90s',  genre:'90s hits (US)',        url:'https://listen.181fm.com/181-star90s_128k.mp3' },
+    { network:'throwback', name:'80s80s',           genre:'80s hits (Germany)',   url:'https://streams.80s80s.de/web/mp3-192/streams.80s80s.de/' },
+    { network:'throwback', name:'90s90s',           genre:'90s hits (Germany)',   url:'https://streams.90s90s.de/hits/mp3-192/streams.90s90s.de/' },
 
     // Trance — Radio Record's trance and progressive channels. HTTPS AAC at 96 kbps (the bitrate
     // is in each filename). URLs are from a community list of Radio Record streams (active
@@ -1196,7 +1210,7 @@
   // Networks whose streams carry song titles worth asking for. Left out on purpose: FIP (its
   // servers send no titles; the channels with an ID use FIP's own API) and Piano (those streams
   // carry only ad-insertion markers, never titles). Checked with tools/check_relay.py.
-  const ICY_NETWORKS = ['soma', 'nts', 'club', 'classical', 'yoga'];
+  const ICY_NETWORKS = ['soma', 'nts', 'club', 'throwback', 'classical', 'yoga'];
   function icyEligible(s){
     return !!RELAY_URL && !s.now && !s.pool && ICY_NETWORKS.includes(s.network)
       && /^https:/.test(currentPlayUrl || '') && !isHls(currentPlayUrl);
