@@ -527,20 +527,6 @@
     gap: 18px;
   }
 
-  .volRow{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    max-width: 200px;
-    margin-left: 16px;
-    color: var(--text-dim);
-  }
-  .volRow[hidden]{ display: none; }
-  .volRow.unavailable{ opacity: 0.4; }
-  .volRow svg{ width: 16px; height: 16px; flex: none; }
-  .volRow .scrubRange{ flex: 1; min-width: 0; }
-
   .scrubber{
     display: none;
     width: 100%;
@@ -794,14 +780,13 @@
           </div>
         </div>
         <div class="settingsRow">
-          <span class="settingsLabel">Volume</span>
-          <div class="volRow" id="volRow" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/></svg>
-            <input type="range" class="scrubRange" id="volRange" min="0" max="100" step="1" value="100" aria-label="Volume">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+          <span class="settingsLabel">Even volume</span>
+          <div class="segmented" id="levelSegmented">
+            <button data-value="off">Off</button>
+            <button data-value="on">On</button>
           </div>
         </div>
-        <p class="settingsNote" id="volNote">Adjusts this app only, not your phone's volume.</p>
+        <p class="settingsNote" id="levelNote">Turns louder stations (Radio Paradise) down so every station plays at about the same loudness. Use your device's volume for overall level.</p>
         <div class="settingsRow">
           <span class="settingsLabel">Data Saver</span>
           <div class="segmented" id="dataSaverSegmented">
@@ -959,7 +944,7 @@
     { id: 'nts',  label: 'NTS',            place: 'London' },
     { id: 'club', label: 'Club',           place: 'Various' },
     { id: 'throwback', label: 'Throwback', place: 'Various' },
-    { id: 'trance', label: 'Trance',       place: 'Moscow' },
+    { id: 'trance', label: 'Trance',       place: 'Various' },
     { id: 'piano', label: 'Piano',         place: 'MPR' },
     { id: 'cbc',  label: 'CBC',            place: 'Toronto' },
     { id: 'bbc',  label: 'BBC',            place: 'London' },
@@ -1089,6 +1074,11 @@
     { network:'trance', name:'Hypnotic',         genre:'Hypnotic · deep trance',  url:'https://radiorecord.hostingradio.ru/hypno96.aacp' },
     { network:'trance', name:'Armin van Buuren', genre:'Trance · Armin’s picks', url:'https://radiorecord.hostingradio.ru/armin96.aacp' },
     { network:'trance', name:'Goa / Psy',        genre:'Goa · psytrance',         url:'https://radiorecord.hostingradio.ru/goa96.aacp' },
+    // Not hosted in Russia — added because the Radio Record streams above don't connect on
+    // Casey's work network (probably blocked by host). The RauteMusik address is a guess from
+    // the pattern of the piano one and has NOT been test-played; remove it if it is dead.
+    { network:'trance', name:'The Trip',         genre:'Progressive house · trance (SomaFM)', url:'https://ice1.somafm.com/thetrip-128-mp3', kbps:128 },
+    { network:'trance', name:'RauteMusik Trance', genre:'Trance (Germany)', url:'https://trance-high.rautemusik.fm/', kbps:192 },
 
     // Piano — from YourClassical (Minnesota Public Radio), listener-supported and ad-free
     { network:'piano', name:'Peaceful Piano', genre:'Solo piano',      url:'https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac' },
@@ -1347,26 +1337,32 @@
   }
   trackAudioListeners(audio);
 
-  // In-app volume, separate from the phone's hardware volume. `fadeLevel` is the 0..1
-  // level the loop-fade code drives; the output level is fadeLevel * userVolume so
-  // fades keep working at any slider position.
+  // Even volume: some stations are mastered louder than others (Radio Paradise is the
+  // consistent one), so each network gets a fixed trim, 1 = untouched, 0.6 = about 4.4 dB
+  // quieter. Tune these numbers by ear. `fadeLevel` is the 0..1 level the loop-fade code
+  // drives; the output level is fadeLevel * trim so fades keep working.
   //
   // Where audio.volume works, that is all there is to it. iOS Safari ignores it (always
   // reads back 1), so there the stream is routed through a Web Audio GainNode instead.
   // That needs the stream to send CORS headers (otherwise Web Audio outputs silence), so
-  // it is only switched on once the slider is moved off 100%, stations that fail the CORS
-  // load fall back to plain playback with the slider dimmed, and HLS streams (which Safari
-  // can't route through Web Audio) are never routed.
-  let userVolume = 1;
+  // it is only switched on for a station that actually has a trim, stations that fail the
+  // CORS load fall back to plain playback (unleveled), and HLS streams (which Safari can't
+  // route through Web Audio) are never routed.
+  const LEVEL_TRIM = { rp: 0.6 };
+  let levelOn = true;
   let fadeLevel = 1;
   let volSupported = true;
   let graphCtx = null, gainNode = null, graphEl = null;
   const noGainHosts = new Set();
-  const volRow = document.getElementById('volRow');
-  const volRange = document.getElementById('volRange');
+
+  function stationTrim(){
+    if(!levelOn || currentIndex === null || !stations[currentIndex]) return 1;
+    const t = LEVEL_TRIM[stations[currentIndex].network];
+    return typeof t === 'number' ? t : 1;
+  }
 
   function applyVolume(){
-    const v = fadeLevel * userVolume;
+    const v = fadeLevel * stationTrim();
     if(graphEl === audio && gainNode){
       gainNode.gain.setTargetAtTime(v, graphCtx.currentTime, 0.015);
     } else {
@@ -1375,11 +1371,10 @@
   }
   function setFadeLevel(l){ fadeLevel = l; applyVolume(); }
 
-  const volNote = document.getElementById('volNote');
-  const VOL_NOTE = volNote.textContent;
+  const levelNote = document.getElementById('levelNote');
+  const LEVEL_NOTE = levelNote.textContent;
   function setVolUnavailable(off){
-    volRow.classList.toggle('unavailable', off);
-    volNote.textContent = off ? "Volume can't be adjusted for the station that's playing (its stream doesn't allow it). The other stations are unaffected." : VOL_NOTE;
+    levelNote.textContent = off ? "Can't level the station that's playing (its stream doesn't allow it). The other stations are unaffected." : LEVEL_NOTE;
   }
 
   function gainHost(url){
@@ -1387,7 +1382,7 @@
   }
   function canUseGain(url){ return !isHls(url) && !noGainHosts.has(gainHost(url)); }
   function wantGraph(url){
-    return !volSupported && (userVolume < 1 || graphEl === audio) && canUseGain(url);
+    return !volSupported && (stationTrim() < 1 || graphEl === audio) && canUseGain(url);
   }
 
   function ensureGraph(){
@@ -1396,7 +1391,7 @@
         const AC = window.AudioContext || window.webkitAudioContext;
         graphCtx = new AC();
         gainNode = graphCtx.createGain();
-        gainNode.gain.value = fadeLevel * userVolume;
+        gainNode.gain.value = fadeLevel * stationTrim();
         gainNode.connect(graphCtx.destination);
         // Keep playing with the ringer switch on and in the background, like a plain <audio>.
         if(navigator.audioSession){ try{ navigator.audioSession.type = 'playback'; } catch(e){} }
@@ -1468,29 +1463,26 @@
     audio.volume = 0.5;
     volSupported = audio.volume === 0.5;
     audio.volume = 1;
-    try{
-      const saved = parseFloat(localStorage.getItem('dial-volume'));
-      if(isFinite(saved)) userVolume = Math.min(1, Math.max(0, saved));
-    } catch(e){}
-    volRange.value = Math.round(userVolume * 100);
+    try{ levelOn = localStorage.getItem('dial-level') !== 'off'; } catch(e){}
     applyVolume();
-    volRow.hidden = false;
-    volRange.addEventListener('input', () => {
-      userVolume = volRange.value / 100;
-      applyVolume();
-      try{ localStorage.setItem('dial-volume', String(userVolume)); } catch(e){}
-    });
-    if(!volSupported){
-      // Switching the route reloads the stream, and the audio context may only be started
-      // from a real tap, so do it when the finger lifts rather than mid-drag.
-      const engage = () => {
-        if(currentIndex !== null && graphEl !== audio && wantGraph(currentPlayUrl)) reloadCurrent();
-      };
-      volRange.addEventListener('touchend', engage);
-      volRange.addEventListener('pointerup', engage);
-      volRange.addEventListener('change', engage);
-    }
   })();
+
+  const levelSegmented = document.getElementById('levelSegmented');
+  function applyLevel(on){
+    levelOn = on;
+    levelSegmented.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', b.dataset.value === (on ? 'on' : 'off'));
+    });
+    try{ localStorage.setItem('dial-level', on ? 'on' : 'off'); } catch(e){}
+    // On iOS the leveling route needs the stream reloaded the first time it is needed.
+    if(!volSupported && on && currentIndex !== null && graphEl !== audio && wantGraph(currentPlayUrl)) reloadCurrent();
+    else applyVolume();
+  }
+  levelSegmented.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if(btn) applyLevel(btn.dataset.value === 'on');
+  });
+  applyLevel(levelOn);
 
   updateDataUsageDisplay(); // safe now that `audio` above exists — first paint shows "0.0 MB used"
 
