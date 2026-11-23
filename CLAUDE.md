@@ -2,15 +2,15 @@
 
 Single-file web radio app (`index.html`) served by GitHub Pages from `main`. The song-title relay lives in `relay/`.
 
-## Preview before merging
+## Push to main, then give a preview link
 
-After every push to a working branch, finish your reply with a test link so the change can be tried on a phone before anything is merged. Build it from the full commit SHA of what you just pushed (`git rev-parse HEAD`), not the branch name, so it is never a stale cached copy:
+After every push to a working branch, finish your reply with a test link so the change can be tried on a phone. Build it from the full commit SHA of what you just pushed (`git rev-parse HEAD`), not the branch name, so it is never a stale cached copy:
 
     https://raw.githack.com/6m7cvk2vj5-del/Radio-vb-/<full-commit-sha>/index.html
 
 - Give the link every time you push, not only when asked.
-- Do not open a PR or merge until the user has asked; they use the preview to decide.
-- Standing permission (Casey, 2026-11-23): once Casey has asked for a change to go live ("put to main"), Claude may push it straight to `main` without a PR. Still no pushing to `main` before he asks.
+- Standing rule (Casey, 2026-11-23): Claude pushes finished work straight to `main` without being asked and without a PR. Order: do the work, run the checks that exist (script syntax check, `tools/check_relay.py` if the relay changed), push the working branch, then fast-forward `main` to it. Do not push to `main` if a check fails; fix it first and say so. Do not open a PR unless he asks.
+- Still give the preview link in the reply, built from the pushed commit, so he can try it on a phone; it is the same commit that is now live on Pages.
 - Known limits of the preview: the relay only accepts requests from the real Pages origin, so song titles/artwork from the relay (Radio Paradise, FIP tracks, SomaFM and other stream titles) will not show. Playback, reconnects and layout can all be checked.
 - Mention that the link was not opened from the sandbox (outbound access is limited there), so it is untested until the user loads it.
 
