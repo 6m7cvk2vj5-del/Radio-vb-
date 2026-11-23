@@ -10,6 +10,7 @@ After every push to a working branch, finish your reply with a test link so the 
 
 - Give the link every time you push, not only when asked.
 - Do not open a PR or merge until the user has asked; they use the preview to decide.
+- Standing permission (Casey, 2026-11-23): once Casey has asked for a change to go live ("put to main"), Claude may push it straight to `main` without a PR. Still no pushing to `main` before he asks.
 - Known limits of the preview: the relay only accepts requests from the real Pages origin, so song titles/artwork from the relay (Radio Paradise, FIP tracks, SomaFM and other stream titles) will not show. Playback, reconnects and layout can all be checked.
 - Mention that the link was not opened from the sandbox (outbound access is limited there), so it is untested until the user loads it.
 
