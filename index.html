@@ -1207,7 +1207,7 @@
   // Networks whose streams carry song titles worth asking for. Left out on purpose: FIP (its
   // servers send no titles; the channels with an ID use FIP's own API) and Piano (those streams
   // carry only ad-insertion markers, never titles). Checked with tools/check_relay.py.
-  const ICY_NETWORKS = ['soma', 'nts', 'club', 'throwback', 'classical', 'yoga'];
+  const ICY_NETWORKS = ['soma', 'nts', 'club', 'deep', 'throwback', 'classical', 'yoga'];
   function icyEligible(s){
     return !!RELAY_URL && !s.now && !s.pool && ICY_NETWORKS.includes(s.network)
       && /^https:/.test(currentPlayUrl || '') && !isHls(currentPlayUrl);
